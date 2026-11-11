@@ -78,6 +78,7 @@ class DetailPanel(
 
     fun showEmpty() {
         current = null
+        title.icon = null
         title.text = "프로세스를 선택하세요"
         subtitle.text = "목록에서 고르면 어떤 프로세스인지 자세히 보여줍니다 (↑↓ 키로 이동)"
         cpuChart.isVisible = false
@@ -88,6 +89,8 @@ class DetailPanel(
     fun show(p: ProcInfo?, gonePid: Int?, service: ProcessMonitorService, detail: ProcDetail?) {
         if (p == null) {
             if (gonePid != null) {
+                current = null
+                title.icon = null
                 title.text = "PID $gonePid"
                 subtitle.text = "이미 종료된 프로세스입니다"
                 cpuChart.isVisible = false; memChart.isVisible = false
@@ -113,7 +116,8 @@ class DetailPanel(
         val parent = service.byPid[p.ppid]?.takeIf { it.pid != p.pid }
         val children = service.processes.filter { it.ppid == p.pid && it.pid != p.pid }
         fun esc(s: String) = StringUtil.escapeXmlEntities(s)
-        fun wrap(s: String) = esc(s).replace("/", "/\u200B").replace("\\", "\\\u200B")
+        // 아주 긴 경로/명령만 '/' 뒤에서 줄바꿈 허용 (짧은 건 그대로 표시)
+        fun wrap(s: String) = if (s.length <= 48) esc(s) else esc(s).replace("/", "/\u200B").replace("\\", "\\\u200B")
         fun a(href: String, text: String) = "<a href='$href' style='color:$link'>${esc(text)}</a>"
         val sb = StringBuilder()
         sb.append("<div style='margin-top:6px'><b>이 프로세스는?</b><br>${esc(Describe.describe(p.name, p.path, p.category))}</div>")

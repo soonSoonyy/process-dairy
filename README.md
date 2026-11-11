@@ -3,6 +3,28 @@
 IDE를 떠나지 않고 **실행 중인 프로세스, 포트, CPU·메모리·디스크·네트워크 사용량**을 보고, 필요하면 바로 종료할 수 있는 IntelliJ 플랫폼 플러그인입니다.
 macOS · Windows · Linux에서 동작하며, IntelliJ IDEA 2024.2 이상(그리고 같은 플랫폼의 WebStorm, PyCharm, GoLand 등)을 지원합니다.
 
+## 스크린샷
+
+실제 IntelliJ IDEA 2025.2(Community)에 설치해서 찍은 화면입니다.
+
+| 상태 표시줄 팝업 | "이 프로젝트" 보기 + 상세 패널 |
+|---|---|
+| ![상태 표시줄 팝업](docs/screenshots/status-popup.png) | ![이 프로젝트](docs/screenshots/this-project.png) |
+
+| 트리 보기 | 우클릭 메뉴 | 종료 확인 |
+|---|---|---|
+| ![트리 보기](docs/screenshots/tree-view.png) | ![우클릭 메뉴](docs/screenshots/context-menu.png) | ![종료 확인](docs/screenshots/kill-confirm.png) |
+
+## 호환성 검사 결과
+
+JetBrains Plugin Verifier로 검사했습니다. 경고 없이 모두 **Compatible**입니다.
+
+| IDE | 빌드 | 결과 |
+|---|---|---|
+| IntelliJ IDEA Community 2024.2.5 | 242.24807.4 | Compatible |
+| IntelliJ IDEA Community 2025.2.6.4 | 252.28539.149 | Compatible |
+| IntelliJ IDEA 2026.3 | 263.7307.200 | Compatible |
+
 ## 기능
 
 ### 상태 표시줄 위젯 (IDE 오른쪽 아래)

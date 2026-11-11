@@ -1,5 +1,6 @@
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
@@ -55,6 +56,8 @@ kotlin {
         // 2024.2에 포함된 Kotlin 표준 라이브러리와 호환되도록
         apiVersion.set(KotlinVersion.KOTLIN_1_9)
         languageVersion.set(KotlinVersion.KOTLIN_2_0)
+        // 인터페이스 기본 메서드를 클래스에 복사하지 않음 → IDE 내부/실험적 API를 덮어쓰는 것으로 오인되지 않게
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
     }
 }
 

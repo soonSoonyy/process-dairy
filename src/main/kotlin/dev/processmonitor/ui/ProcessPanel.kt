@@ -317,17 +317,18 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
     private fun rebuild() {
         val rows = buildRows()
         val selected = table.selectedRows.toList().mapNotNull { model.rows.getOrNull(it)?.p?.pid }.toSet()
-        val changed = model.update(rows)
-        if (changed && selected.isNotEmpty()) {
-            restoring = true
-            try {
+        // 표 갱신 중에는 JTable이 선택을 잠시 지우는 이벤트를 보내므로, 그동안 선택 변경을 무시하고 직접 복원
+        restoring = true
+        try {
+            val changed = model.update(rows)
+            if (changed && selected.isNotEmpty()) {
                 table.clearSelection()
                 rows.forEachIndexed { i, r -> if (r.p.pid in selected) table.addRowSelectionInterval(i, i) }
                 val lead = rows.indexOfFirst { it.p.pid == selectedPid }
                 if (lead >= 0) table.selectionModel.addSelectionInterval(lead, lead)
-            } finally {
-                restoring = false
             }
+        } finally {
+            restoring = false
         }
         model.checked.retainAll(service.byPid.keys)
         countLabel.text = "${rows.size}개"

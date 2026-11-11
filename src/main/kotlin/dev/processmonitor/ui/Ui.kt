@@ -163,7 +163,8 @@ class SparkChart(private val colors: List<Color>, height: Int = 74) : JComponent
         g2.drawString(title, pad, y)
         val tw = g2.fontMetrics.stringWidth(title)
         g2.font = bold.deriveFont(bold.size2D + 1f)
-        g2.drawString(value, pad + tw + JBUI.scale(8), y)
+        val vx = pad + tw + JBUI.scale(8)
+        g2.drawString(clip(value, g2, width - vx - pad), vx, y) // 좁을 때 잘리지 않고 … 처리
         y += g2.getFontMetrics(small).height
         g2.font = small
         g2.color = UIUtil.getContextHelpForeground()

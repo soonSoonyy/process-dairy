@@ -76,7 +76,7 @@ object Describe {
             return Category.SYSTEM
         }
         if (low in SHELLS) return Category.SHELL
-        if (low in DEVS || low.startsWith("python") || p.startsWith("/opt/homebrew") || p.startsWith("/usr/local") ||
+        if (low in DEVS || low.replace(Regex("[-_]?[0-9][0-9.]*$"), "") in DEVS || low.startsWith("python") || p.startsWith("/opt/homebrew") || p.startsWith("/usr/local") ||
             pl.contains("/jetbrains/") || pl.contains("/jdk")) return Category.DEV
         if (p.contains(".app/") || pl.contains("/program files")) return Category.APP
         return Category.OTHER
@@ -85,6 +85,9 @@ object Describe {
     fun describe(name: String, path: String, cat: Category): String {
         val n = baseName(name)
         KNOWN[n]?.let { return it }
+        // python3.13, node22 처럼 버전이 붙은 이름도 찾기
+        val noVersion = n.replace(Regex("[-_]?[0-9][0-9.]*$"), "")
+        (KNOWN[noVersion] ?: KNOWN[noVersion + "3"])?.let { return it }
         val low = n.lowercase()
         if ("helper" in low) {
             val base = n.replace(Regex("\\s*Helper.*$", RegexOption.IGNORE_CASE), "")
