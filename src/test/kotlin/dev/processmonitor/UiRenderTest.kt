@@ -3,6 +3,7 @@ package dev.processmonitor
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.openapi.util.Disposer
+import dev.processmonitor.settings.ProcessViewState
 import dev.processmonitor.ui.ProcessPanel
 import dev.processmonitor.ui.StatusPopupPanel
 import java.awt.Component
@@ -41,6 +42,7 @@ class UiRenderTest : BasePlatformTestCase() {
 
     fun testToolWindowPanel() {
         val service = ProcessMonitorService.get()
+        ProcessViewState.get(project).loadState(ProcessViewState.Options().apply { scope = "ALL" })
         val panel = ProcessPanel(project)
         Disposer.register(testRootDisposable, panel)
         panel.forceCollect = true

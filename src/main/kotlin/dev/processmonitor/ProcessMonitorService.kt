@@ -12,6 +12,7 @@ import dev.processmonitor.data.Collector
 import dev.processmonitor.model.ProcDetail
 import dev.processmonitor.model.ProcInfo
 import dev.processmonitor.model.SystemStats
+import dev.processmonitor.settings.ProcessMonitorSettings
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -26,7 +27,6 @@ import java.util.concurrent.locks.ReentrantLock
 class ProcessMonitorService : Disposable {
     companion object {
         const val HISTORY = 60          // 2초 × 60 = 최근 2분
-        const val INTERVAL_MS = 2000L
         private val LOG = logger<ProcessMonitorService>()
         fun get(): ProcessMonitorService = service()
     }
@@ -53,12 +53,23 @@ class ProcessMonitorService : Disposable {
         val s = Subscriber(needsProcesses, onUpdate)
         subscribers += s
         Disposer.register(parent) { subscribers -= s }
-        synchronized(this) {
-            if (future == null) {
-                future = AppExecutorUtil.getAppScheduledExecutorService()
-                    .scheduleWithFixedDelay(::tick, 0, INTERVAL_MS, TimeUnit.MILLISECONDS)
-            }
-        }
+        synchronized(this) { if (future == null) schedule() }
+    }
+
+    private fun schedule() {
+        future = AppExecutorUtil.getAppScheduledExecutorService()
+            .scheduleWithFixedDelay(::tick, 0, ProcessMonitorSettings.get().intervalMs, TimeUnit.MILLISECONDS)
+    }
+
+    /** 설정에서 갱신 주기를 바꾸면 다시 예약 */
+    fun reschedule() = synchronized(this) {
+        if (future != null) { future?.cancel(false); schedule() }
+    }
+
+    /** 그래프가 보여주는 기간 (예: "최근 2분") */
+    fun historyLabel(): String {
+        val sec = HISTORY * ProcessMonitorSettings.get().intervalMs / 1000
+        return if (sec % 60 == 0L) "최근 ${sec / 60}분" else "최근 ${sec}초"
     }
 
     /** 다음 주기를 기다리지 않고 바로 한 번 수집 */

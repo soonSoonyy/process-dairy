@@ -19,6 +19,8 @@ import com.intellij.util.ui.UIUtil
 import dev.processmonitor.ProcessActions
 import dev.processmonitor.ProcessMonitorService
 import dev.processmonitor.model.ProcInfo
+import dev.processmonitor.settings.ProcessMonitorSettings
+import dev.processmonitor.settings.StatusFormat
 import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.FlowLayout
@@ -64,8 +66,15 @@ class StatusWidget(private val project: Project) : CustomStatusBarWidget {
     private fun update() {
         val s = service.latest ?: return
         val mem = if (s.memTotal > 0) s.memUsed * 100.0 / s.memTotal else 0.0
-        label.text = "CPU %3.0f%% · MEM %3.0f%%".format(s.cpu, mem)
-        label.icon = SparkIcon(service.history.map { it.cpu }, Palette.CPU)
+        val net = "↓ ${Fmt.bytes(s.netRx)}/s ↑ ${Fmt.bytes(s.netTx)}/s"
+        label.text = when (ProcessMonitorSettings.get().state.statusFormat) {
+            StatusFormat.CPU -> "CPU %3.0f%%".format(s.cpu)
+            StatusFormat.NET -> net
+            StatusFormat.ALL -> "CPU %3.0f%% · MEM %3.0f%% · %s".format(s.cpu, mem, net)
+            StatusFormat.CPU_MEM -> "CPU %3.0f%% · MEM %3.0f%%".format(s.cpu, mem)
+        }
+        label.icon = if (ProcessMonitorSettings.get().state.statusFormat == StatusFormat.NET) null
+        else SparkIcon(service.history.map { it.cpu }, Palette.CPU)
     }
 
     private fun togglePopup() {
@@ -86,14 +95,14 @@ class StatusWidget(private val project: Project) : CustomStatusBarWidget {
 /** 상태 표시줄 팝업: 그래프 4개 + CPU/메모리 상위 프로세스 (열려 있는 동안 순서 고정) */
 class StatusPopupPanel(private val project: Project, private val close: () -> Unit) : JPanel(BorderLayout()), Disposable {
     private val service = ProcessMonitorService.get()
-    private val charts = SystemCharts(70)
+    private val charts = SystemCharts(100)
     private val cpuList = TopList("CPU 많이 쓰는 프로세스") { "%.1f%%".format(it.cpu) }
     private val memList = TopList("메모리 많이 쓰는 프로세스") { Fmt.mem(it.rssBytes) }
 
     init {
         border = JBUI.Borders.empty(8, 10)
         val grid = JPanel(GridLayout(2, 2, JBUI.scale(14), JBUI.scale(8))).apply {
-            charts.all.forEach { add(it.apply { preferredSize = JBUI.size(250, 70) }) }
+            charts.all.forEach { add(it.apply { preferredSize = JBUI.size(290, 100) }) }
         }
         val lists = JPanel(GridLayout(1, 2, JBUI.scale(14), 0)).apply {
             border = JBUI.Borders.emptyTop(10)

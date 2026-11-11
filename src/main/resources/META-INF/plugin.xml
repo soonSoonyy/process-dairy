@@ -10,6 +10,8 @@
       <li>"Process Monitor" tool window: list / tree view, search by name, PID, port or working directory</li>
       <li>"This project" filter: processes whose working directory is inside the current project</li>
       <li>Kill one or many processes (optionally with all child processes), open listening ports in the browser</li>
+      <li>Find Action / Tools menu: "Kill Process on Port…", "Find Process by Port…" (assign shortcuts in Keymap)</li>
+      <li>Settings → Tools → Process Monitor: refresh interval, status bar format, default scope, watchers on/off</li>
       <li>Run/Debug watcher: when a run fails with "port already in use", shows who holds the port with a "Kill and rerun" action;
           when a run stops but child processes keep running, offers to kill them</li>
     </ul>
@@ -24,7 +26,37 @@
     <statusBarWidgetFactory id="dev.processmonitor.status"
                             implementation="dev.processmonitor.ui.StatusWidgetFactory" order="first"/>
     <notificationGroup id="Process Monitor" displayType="BALLOON"/>
+    <applicationConfigurable parentId="tools" id="dev.processmonitor.settings" displayName="Process Monitor"
+                             instance="dev.processmonitor.settings.ProcessMonitorConfigurable"/>
   </extensions>
+
+  <actions>
+    <!-- Find Action(⇧⇧ / Ctrl+Shift+A)에서 검색, Tools 메뉴, Keymap에서 단축키 지정 가능 -->
+    <group id="ProcessMonitor.Group" text="Process Monitor" popup="true" icon="/icons/processMonitor.svg">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+      <action id="ProcessMonitor.Show" class="dev.processmonitor.actions.ShowProcessMonitorAction"
+              text="Process Monitor 열기" description="실행 중인 프로세스·포트·사용량을 보는 Process Monitor 창을 엽니다"
+              icon="/icons/processMonitor.svg">
+        <synonym text="Open Process Monitor"/>
+        <synonym text="Task Manager"/>
+        <synonym text="프로세스 보기"/>
+      </action>
+      <action id="ProcessMonitor.FindByPort" class="dev.processmonitor.actions.FindProcessByPortAction"
+              text="포트로 프로세스 찾기…" description="포트 번호를 입력하면 그 포트를 쓰는 프로세스를 Process Monitor에서 보여줍니다">
+        <synonym text="Find Process by Port"/>
+        <synonym text="Who uses port"/>
+        <synonym text="포트 찾기"/>
+      </action>
+      <action id="ProcessMonitor.KillOnPort" class="dev.processmonitor.actions.KillProcessOnPortAction"
+              text="포트를 쓰는 프로세스 종료…" description="포트 번호를 입력하면 그 포트를 쓰는 프로세스를 하위 프로세스까지 종료합니다"
+              icon="AllIcons.Debugger.KillProcess">
+        <synonym text="Kill Process on Port"/>
+        <synonym text="Kill Port"/>
+        <synonym text="Free Port"/>
+        <synonym text="포트 종료"/>
+      </action>
+    </group>
+  </actions>
 
   <projectListeners>
     <!-- Run/Debug 실행 감시: 포트 충돌 감지, 실행 종료 후 남은 프로세스 알림 -->

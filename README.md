@@ -25,6 +25,16 @@ macOS · Windows · Linux에서 동작하며, IntelliJ IDEA 2024.2 이상(그리
 |---|---|---|
 | ![남은 프로세스](docs/screenshots/leftover.png) | ![정리 버튼](docs/screenshots/cleanup-button.png) | ![트리 종료](docs/screenshots/kill-tree-menu.png) |
 
+### 사용성: 설정 · Find Action · Tools 메뉴 · 보기 상태 기억
+
+| Find Action에서 "kill port" 검색 | Tools → Process Monitor |
+|---|---|
+| ![Find Action](docs/screenshots/find-action.png) | ![Tools 메뉴](docs/screenshots/tools-menu.png) |
+
+| Settings → Tools → Process Monitor | IDE를 다시 켜도 보기 상태 유지 |
+|---|---|
+| ![설정](docs/screenshots/settings.png) | ![보기 상태 복원](docs/screenshots/restored-view.png) |
+
 ## 호환성 검사 결과
 
 JetBrains Plugin Verifier로 검사했습니다. 경고 없이 모두 **Compatible**입니다.
@@ -40,9 +50,9 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 ## 기능
 
 ### 상태 표시줄 위젯 (IDE 오른쪽 아래)
-- 작은 CPU 그래프와 `CPU 23% · MEM 61%`를 항상 표시
+- 작은 CPU 그래프와 `CPU 23% · MEM 61%`를 항상 표시 (설정에서 CPU만 / 네트워크 속도 / 전부 중 선택)
 - 클릭하면 팝업:
-  - CPU / 메모리 / 디스크(읽기·쓰기) / 네트워크(받기·보내기) 그래프 (최근 2분)
+  - CPU / 메모리 / 디스크(읽기·쓰기) / 네트워크(받기·보내기) 그래프 (최근 60개 값: 2초 주기면 2분)
   - CPU·메모리를 많이 쓰는 프로세스 상위 5개와 **종료** 버튼 (팝업이 열려 있는 동안 순서 고정)
   - "Process Monitor 창 열기"
 - 숨기려면 상태 표시줄을 우클릭해서 "Process Monitor (CPU·메모리)"를 끄면 됩니다.
@@ -53,9 +63,24 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 - **검색**: 전체 · 이름·PID · 작업 폴더(`~/projects/app` 형식 가능) · 포트 · 실행 경로
 - **순서 고정**: 값이 바뀌어도 행이 움직이지 않음. 열 제목 클릭 / "다시 정렬" 때만 재정렬 ("실시간 정렬"로 끌 수 있음)
 - **다중 선택 종료**: 체크박스(또는 Space) → "체크한 항목 종료 / 강제 종료"
-- **우클릭 메뉴**: 종료, 강제 종료, PID·경로·작업 폴더 복사, 같은 작업 폴더의 프로세스 찾기, `http://localhost:포트` 브라우저에서 열기, 부모 프로세스로 이동
+- **보기 상태 기억**: 범위, 트리 보기, 검색 대상, 정렬, 실시간 정렬, 그래프 표시, 열 너비, 상세 패널 폭을 프로젝트별로 저장 (IDE를 다시 켜도 유지)
+- **우클릭 메뉴**(IDE 기본 메뉴 스타일): 종료, 강제 종료, 하위 프로세스까지 종료, PID·경로·작업 폴더 복사, 같은 작업 폴더의 프로세스 찾기, `http://localhost:포트` 브라우저에서 열기, 부모 프로세스로 이동
 - **상세 패널**: 이 프로세스가 무엇인지(한국어 설명), CPU·메모리 추이 그래프, 열린 포트와 네트워크 연결, 실행 명령, 경로, 하위 프로세스
 - 단축키: `↑↓` 이동, `Space` 체크, `Delete` 선택 항목 종료
+
+### Find Action · Tools 메뉴 · 단축키
+- `⇧⇧`(Search Everywhere) 또는 `Ctrl+Shift+A` / `⌘⇧A`(Find Action)에서 영어·한국어로 검색할 수 있습니다.
+  - **포트를 쓰는 프로세스 종료…** ("kill port", "free port", "포트 종료")
+  - **포트로 프로세스 찾기…** ("find process by port", "who uses port")
+  - **Process Monitor 열기** ("task manager", "프로세스 보기")
+- 같은 동작이 **Tools → Process Monitor** 메뉴에도 있습니다.
+- 단축키는 Find Action 목록에서 `Alt+Enter`(Assign Shortcut), 또는 **Settings → Keymap**에서 "Process Monitor"로 검색해 지정합니다. 기본 단축키는 다른 기능과 겹치지 않도록 비워 두었습니다.
+
+### 설정 (Settings → Tools → Process Monitor)
+- 갱신 주기: 1초 / 2초 / 5초
+- 상태 표시줄 형식: CPU · 메모리 / CPU만 / 네트워크 속도 / CPU · 메모리 · 네트워크
+- 처음 보기 범위: 프로젝트에서 처음 도구 창을 열 때 쓸 범위
+- Run/Debug 감시 켜기·끄기: 포트 충돌 알림, 남은 프로세스 알림
 
 ### Run/Debug 감시
 - **포트 충돌 감지**: Run 로그에 "포트가 이미 사용 중" 오류가 나오면(Spring Boot, Node.js, Go, uvicorn, Rails/Puma, create-react-app, Java `BindException`) 그 포트를 쓰는 프로세스를 알려주고 **[종료하고 다시 실행] / [종료만] / [Process Monitor에서 보기]** 버튼을 제공합니다. 정상 종료에 응답하지 않으면 강제 종료 후 포트가 비워진 것을 확인하고 다시 실행합니다.
@@ -93,7 +118,9 @@ src/main/kotlin/dev/processmonitor/
 ├── data/Collector.kt          # OSHI로 시스템·프로세스·포트 정보 수집 (맥은 lsof로 보완)
 ├── data/Describe.kt           # 프로세스 분류와 한국어 설명
 ├── model/Model.kt             # 데이터 클래스
-├── ProcessMonitorService.kt   # 2초마다 수집하는 앱 공용 서비스 (보이는 화면이 있을 때만 프로세스 목록 수집)
+├── ProcessMonitorService.kt   # 설정한 주기마다 수집하는 앱 공용 서비스 (보이는 화면이 있을 때만 프로세스 목록 수집)
+├── settings/                  # 설정(앱 전체), 설정 화면, 프로젝트별 보기 상태
+├── actions/PortActions.kt     # Find Action / Tools 메뉴 동작 (포트로 종료·찾기, 창 열기)
 ├── ProcessActions.kt          # 종료(하위 프로세스 포함) / 복사 / 브라우저 열기
 ├── runs/RunWatcher.kt         # Run/Debug 감시: 포트 충돌 알림, 남은 프로세스 알림
 ├── runs/PortConflict.kt       # 로그에서 "포트 사용 중" 오류와 포트 번호 찾기

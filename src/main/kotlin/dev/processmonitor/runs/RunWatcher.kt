@@ -20,6 +20,7 @@ import dev.processmonitor.ProcessActions
 import dev.processmonitor.ProcessMonitorService
 import dev.processmonitor.model.Category
 import dev.processmonitor.model.ProcInfo
+import dev.processmonitor.settings.ProcessMonitorSettings
 import dev.processmonitor.ui.Fmt
 import dev.processmonitor.ui.ProcessToolWindowFactory
 import java.util.concurrent.ConcurrentHashMap
@@ -44,7 +45,7 @@ class RunWatcher(private val project: Project) : ExecutionListener {
     override fun processStarted(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
         val pid = pidOf(handler)
         tracked[handler] = Tracked(pid, System.currentTimeMillis())
-        handler.addProcessListener(PortConflictListener(project, env, pid))
+        if (ProcessMonitorSettings.get().state.watchPortConflicts) handler.addProcessListener(PortConflictListener(project, env, pid))
         ensureSampler()
     }
 
@@ -78,7 +79,7 @@ class RunWatcher(private val project: Project) : ExecutionListener {
     }
 
     private fun checkLeftovers(runName: String, t: Tracked) {
-        if (project.isDisposed) return
+        if (project.isDisposed || !ProcessMonitorSettings.get().state.watchLeftovers) return
         val service = ProcessMonitorService.get()
         val procs = service.quickList()
         if (procs.isEmpty()) return

@@ -4,6 +4,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.HTMLEditorKitBuilder
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
@@ -15,11 +16,13 @@ import dev.processmonitor.model.ProcDetail
 import dev.processmonitor.model.ProcInfo
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.GridLayout
 import java.awt.Rectangle
 import java.text.SimpleDateFormat
 import java.util.Date
 import javax.swing.BoxLayout
+import javax.swing.JComponent
 import javax.swing.JEditorPane
 import javax.swing.JPanel
 import javax.swing.Scrollable
@@ -52,6 +55,26 @@ class DetailPanel(
     }
     private var current: ProcInfo? = null
     private var lastHtml = ""
+    private fun textBlock() = JBTextArea().apply {
+        isEditable = false
+        isOpaque = false
+        (caret as? DefaultCaret)?.updatePolicy = DefaultCaret.NEVER_UPDATE // 내용이 바뀌어도 스크롤이 끝으로 내려가지 않게
+        lineWrap = true          // 공백이 없는 긴 경로도 패널 폭에 맞춰 글자 단위로 줄바꿈
+        wrapStyleWord = false
+        font = JBFont.create(Font(Font.MONOSPACED, Font.PLAIN, UIUtil.getLabelFont().size - 1))
+        border = JBUI.Borders.empty(0, 10, 6, 10)
+        alignmentX = LEFT_ALIGNMENT
+    }
+    private fun sectionTitle(text: String) = JBLabel(text).apply {
+        font = JBFont.label().asBold()
+        border = JBUI.Borders.empty(4, 10, 2, 10)
+        alignmentX = LEFT_ALIGNMENT
+    }
+    private val cmdTitle = sectionTitle("실행 명령")
+    private val cmdText = textBlock()
+    private val pathTitle = sectionTitle("경로")
+    private val pathText = textBlock()
+    private val textBlocks: List<JComponent> = listOf(cmdTitle, cmdText, pathTitle, pathText)
 
     init {
         val head = JPanel(BorderLayout()).apply {
@@ -67,16 +90,22 @@ class DetailPanel(
         }
         header.add(head)
         header.add(charts)
-        val body = WidthTrackingPanel().apply {
-            add(header, BorderLayout.NORTH)
-            add(html, BorderLayout.CENTER)
-            html.border = JBUI.Borders.empty(0, 10, 10, 10)
+        html.border = JBUI.Borders.empty(0, 10, 6, 10)
+        html.alignmentX = LEFT_ALIGNMENT
+        header.alignmentX = LEFT_ALIGNMENT
+        val column = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            add(header); add(html); textBlocks.forEach { add(it) }
         }
+        val body = WidthTrackingPanel().apply { add(column, BorderLayout.NORTH) }
         add(JBScrollPane(body, JBScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER).apply { border = JBUI.Borders.empty() }, BorderLayout.CENTER)
         showEmpty()
     }
 
+    private fun setIfChanged(t: JBTextArea, text: String) { if (t.text != text) t.text = text }
+
     fun showEmpty() {
+        textBlocks.forEach { it.isVisible = false }
         current = null
         title.icon = null
         title.text = "프로세스를 선택하세요"
@@ -90,6 +119,7 @@ class DetailPanel(
         if (p == null) {
             if (gonePid != null) {
                 current = null
+                textBlocks.forEach { it.isVisible = false }
                 title.icon = null
                 title.text = "PID $gonePid"
                 subtitle.text = "이미 종료된 프로세스입니다"
@@ -105,10 +135,10 @@ class DetailPanel(
         cpuChart.isVisible = true; memChart.isVisible = true
         val ch = service.cpuHistory[p.pid]?.toList() ?: emptyList()
         val cmax = maxOf(10.0, Math.ceil((ch.maxOrNull() ?: 0.0) / 10) * 10)
-        cpuChart.setData(listOf(ch), cmax, "CPU", "%.1f%%".format(p.cpu), "최근 2분", "${cmax.toInt()}%")
+        cpuChart.setData(listOf(ch), cmax, "CPU", "%.1f%%".format(p.cpu), service.historyLabel(), "${cmax.toInt()}%")
         val mh = service.memHistory[p.pid]?.toList() ?: emptyList()
         val mmax = Fmt.niceMax(mh.maxOrNull() ?: 0.0, 16.0 * 1048576)
-        memChart.setData(listOf(mh), mmax, "메모리", Fmt.mem(p.rssBytes), "%.1f%% · 최근 2분".format(p.memPct), Fmt.bytes(mmax))
+        memChart.setData(listOf(mh), mmax, "메모리", Fmt.mem(p.rssBytes), "%.1f%% · ".format(p.memPct) + service.historyLabel(), Fmt.bytes(mmax))
 
         val dim = hex(UIUtil.getContextHelpForeground())
         val link = hex(Palette.PORT)
@@ -117,7 +147,6 @@ class DetailPanel(
         val children = service.processes.filter { it.ppid == p.pid && it.pid != p.pid }
         fun esc(s: String) = StringUtil.escapeXmlEntities(s)
         // 아주 긴 경로/명령만 '/' 뒤에서 줄바꿈 허용 (짧은 건 그대로 표시)
-        fun wrap(s: String) = if (s.length <= 48) esc(s) else esc(s).replace("/", "/\u200B").replace("\\", "\\\u200B")
         fun a(href: String, text: String) = "<a href='$href' style='color:$link'>${esc(text)}</a>"
         val sb = StringBuilder()
         sb.append("<div style='margin-top:6px'><b>이 프로세스는?</b><br>${esc(Describe.describe(p.name, p.path, p.category))}</div>")
@@ -147,14 +176,15 @@ class DetailPanel(
             if (children.size > 12) sb.append("<br><span style='color:$dim'>…외 ${children.size - 12}개</span>")
             sb.append("</div>")
         }
-        sb.append("<div style='margin-top:8px'><b>실행 명령</b><br><code>${wrap(d?.commandLine?.ifEmpty { p.path } ?: "…")}</code></div>")
-        sb.append("<div style='margin-top:8px'><b>경로</b><br><code>${wrap(p.path.ifEmpty { "(권한이 없어 확인할 수 없음)" })}</code></div>")
         sb.append("<div style='margin-top:12px'>")
         if (!ProcessActions.isProtected(p.pid)) {
             sb.append(a("kill:15", "■ 종료") + " &nbsp;&nbsp; " + a("kill:9", "■ 강제 종료") + " &nbsp;&nbsp; ")
         }
         sb.append(a("copy:${p.pid}", "PID 복사") + "</div>")
         setHtml(sb.toString())
+        textBlocks.forEach { it.isVisible = true }
+        setIfChanged(cmdText, d?.commandLine?.ifEmpty { p.path } ?: "불러오는 중…")
+        setIfChanged(pathText, p.path.ifEmpty { "(권한이 없어 확인할 수 없음)" })
     }
 
     private fun setHtml(body: String) {

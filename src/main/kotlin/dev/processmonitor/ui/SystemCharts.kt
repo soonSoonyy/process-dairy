@@ -14,7 +14,7 @@ class SystemCharts(height: Int = 74) {
         val h = s.history
         val last = h.lastOrNull() ?: return
         cpu.setData(listOf(h.map { it.cpu }), 100.0, "CPU", "%.0f%%".format(last.cpu),
-            "논리 코어 ${s.cores}개 · 최근 2분", "100%")
+            "논리 코어 ${s.cores}개 · ${s.historyLabel()}", "100%")
         val memPct = h.map { if (it.memTotal > 0) it.memUsed * 100.0 / it.memTotal else 0.0 }
         mem.setData(listOf(memPct), 100.0, "메모리", "%.0f%%".format(memPct.last()),
             "${Fmt.mem(last.memUsed)} / ${Fmt.mem(last.memTotal)} 사용", "100%")

@@ -1,6 +1,11 @@
 package dev.processmonitor.ui
 
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
@@ -18,6 +23,8 @@ import dev.processmonitor.ProcessActions
 import dev.processmonitor.ProcessMonitorService
 import dev.processmonitor.model.ProcDetail
 import dev.processmonitor.model.ProcInfo
+import dev.processmonitor.settings.ProcessMonitorSettings
+import dev.processmonitor.settings.ProcessViewState
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.GridLayout
@@ -30,13 +37,16 @@ import javax.swing.AbstractAction
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JComponent
-import javax.swing.JMenuItem
 import javax.swing.JPanel
-import javax.swing.JPopupMenu
 import javax.swing.JSeparator
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.Icon
 import javax.swing.SwingConstants
+import javax.swing.event.ChangeEvent
+import javax.swing.event.ListSelectionEvent
+import javax.swing.event.TableColumnModelEvent
+import javax.swing.event.TableColumnModelListener
 import javax.swing.event.DocumentEvent
 
 /** 도구 창 "Process Monitor"의 전체 화면 */
@@ -53,13 +63,14 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
     }
 
     private val service = ProcessMonitorService.get()
+    private val view = ProcessViewState.get(project)
     private val home = System.getProperty("user.home")
     private val me = System.getProperty("user.name").substringAfterLast('\\')
     private val projectPath = project.basePath
 
-    private val scopeBox = ComboBox(Scope.entries.toTypedArray())
-    private val treeBox = JBCheckBox("트리 보기")
-    private val fieldBox = ComboBox(Field.entries.toTypedArray())
+    internal val scopeBox = ComboBox(Scope.entries.toTypedArray())
+    internal val treeBox = JBCheckBox("트리 보기")
+    internal val fieldBox = ComboBox(Field.entries.toTypedArray())
     private val search = SearchTextField(false)
     private val resortBtn = JButton("다시 정렬", AllIcons.ObjectBrowser.Sorted).apply { toolTipText = "지금 값 기준으로 순서를 다시 정합니다" }
     private val liveBox = JBCheckBox("실시간 정렬").apply { toolTipText = "켜면 새로고침할 때마다 순서가 바뀝니다" }
@@ -133,29 +144,54 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         }
         actionBar.isVisible = false
         actionBar.background = JBUI.CurrentTheme.Banner.INFO_BACKGROUND
-        val splitter = OnePixelSplitter(false, 0.68f).apply {
+        val splitter = OnePixelSplitter(false, "ProcessMonitor.detailSplitter", 0.68f).apply {
             firstComponent = tablePanel
             secondComponent = detailPanel
         }
         add(north, BorderLayout.NORTH)
         add(splitter, BorderLayout.CENTER)
 
-        // ---- 이벤트
-        scopeBox.addActionListener { resort(); rebuild() }
-        treeBox.addActionListener { resort(); rebuild() }
-        fieldBox.addActionListener { search.textEditor.emptyText.text = (fieldBox.selectedItem as Field).hint; rebuild() }
-        search.textEditor.emptyText.text = Field.ALL.hint
+        // ---- 저장된 보기 상태 복원 (이벤트 연결 전에)
+        val st = view.state
+        scopeBox.selectedItem = Scope.entries.firstOrNull { it.name == (st.scope ?: ProcessMonitorSettings.get().state.defaultScope) } ?: Scope.MINE
+        treeBox.isSelected = st.tree
+        fieldBox.selectedItem = Field.entries.firstOrNull { it.name == st.field } ?: Field.ALL
+        sortCol = Col.entries.firstOrNull { it.name == st.sortCol && it.sortable } ?: Col.CPU
+        sortDesc = st.sortDesc
+        liveBox.isSelected = st.live
+        chartsBox.isSelected = st.charts
+        chartsRow.isVisible = st.charts
+        st.columnWidths.takeIf { it.size == Col.entries.size }?.forEachIndexed { i, w ->
+            if (i != Col.CHECK.ordinal && w > 20) table.columnModel.getColumn(i).preferredWidth = w
+        }
+        updateHeaders()
+        table.columnModel.addColumnModelListener(object : TableColumnModelListener {
+            override fun columnMarginChanged(e: ChangeEvent?) {
+                st.columnWidths = Col.entries.map { table.columnModel.getColumn(it.ordinal).width }.toMutableList()
+            }
+            override fun columnAdded(e: TableColumnModelEvent?) {}
+            override fun columnRemoved(e: TableColumnModelEvent?) {}
+            override fun columnMoved(e: TableColumnModelEvent?) {}
+            override fun columnSelectionChanged(e: ListSelectionEvent?) {}
+        })
+
+        // ---- 이벤트 (바꿀 때마다 보기 상태 저장)
+        scopeBox.addActionListener { st.scope = (scopeBox.selectedItem as Scope).name; resort(); rebuild() }
+        treeBox.addActionListener { st.tree = treeBox.isSelected; resort(); rebuild() }
+        fieldBox.addActionListener { st.field = (fieldBox.selectedItem as Field).name; search.textEditor.emptyText.text = (fieldBox.selectedItem as Field).hint; rebuild() }
+        search.textEditor.emptyText.text = (fieldBox.selectedItem as Field).hint
         search.addDocumentListener(object : DocumentAdapter() { override fun textChanged(e: DocumentEvent) = rebuild() })
         resortBtn.addActionListener { resort(); rebuild() }
         cleanupBtn.addActionListener { ProcessActions.kill(project, cleanupTargets, force = false, tree = true) }
-        liveBox.addActionListener { if (liveBox.isSelected) { resort(); rebuild() } }
-        chartsBox.addActionListener { chartsRow.isVisible = chartsBox.isSelected; revalidate() }
+        liveBox.addActionListener { st.live = liveBox.isSelected; if (liveBox.isSelected) { resort(); rebuild() } }
+        chartsBox.addActionListener { st.charts = chartsBox.isSelected; chartsRow.isVisible = chartsBox.isSelected; revalidate() }
 
         table.tableHeader.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 val col = Col.entries[table.convertColumnIndexToModel(table.columnAtPoint(e.point)).takeIf { it >= 0 } ?: return]
                 if (!col.sortable) return
                 if (sortCol == col) sortDesc = !sortDesc else { sortCol = col; sortDesc = col !in setOf(Col.NAME, Col.USER, Col.CWD) }
+                st.sortCol = sortCol.name; st.sortDesc = sortDesc
                 updateHeaders(); resort(); rebuild()
             }
         })
@@ -425,34 +461,45 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         if (!table.isRowSelected(row)) table.setRowSelectionInterval(row, row)
         val sel = selectedProcs()
         val p = model.rows[row].p
-        val menu = JPopupMenu()
-        fun item(text: String, enabled: Boolean = true, action: () -> Unit) =
-            menu.add(JMenuItem(text).apply { isEnabled = enabled; addActionListener { action() } })
+        val g = DefaultActionGroup()
+        fun item(text: String, icon: Icon? = null, enabled: Boolean = true, run: () -> Unit) = g.add(SimpleAction(text, icon, enabled, run))
         val many = sel.size > 1
-        item(if (many) "선택한 ${sel.size}개 종료" else "종료", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, false) }
-        item(if (many) "선택한 ${sel.size}개 강제 종료" else "강제 종료", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, true) }
+        val killable = sel.any { !ProcessActions.isProtected(it.pid) }
+        item(if (many) "선택한 ${sel.size}개 종료" else "종료", AllIcons.Actions.Suspend, killable) { ProcessActions.kill(project, sel, false) }
+        item(if (many) "선택한 ${sel.size}개 강제 종료" else "강제 종료", AllIcons.Debugger.KillProcess, killable) { ProcessActions.kill(project, sel, true) }
         val kids = sel.sumOf { ProcessActions.descendantsOf(it.pid).size }
-        if (kids > 0) item("하위 프로세스까지 종료 (+${kids}개)", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, false, tree = true) }
+        if (kids > 0) item("하위 프로세스까지 종료 (+${kids}개)", AllIcons.Actions.GC, killable) { ProcessActions.kill(project, sel, false, tree = true) }
         if (model.checked.isNotEmpty()) item("체크한 ${model.checked.size}개 종료") { ProcessActions.kill(project, checkedProcs(), false) }
-        item(if (sel.all { it.pid in model.checked }) "체크 해제 (Space)" else "체크 표시 (Space)") {
-            val all = sel.all { it.pid in model.checked }
-            sel.forEach { if (all) model.checked -= it.pid else model.checked += it.pid }
+        val allChecked = sel.all { it.pid in model.checked }
+        item(if (allChecked) "체크 해제" else "체크 표시", AllIcons.Actions.Checked) {
+            sel.forEach { if (allChecked) model.checked -= it.pid else model.checked += it.pid }
             table.repaint(); updateActionBar()
         }
-        menu.addSeparator()
-        p.ports.take(3).forEach { port -> item("브라우저에서 열기  http://localhost:$port") { ProcessActions.openPort(port) } }
-        if (p.ports.isNotEmpty()) menu.addSeparator()
-        item("PID 복사") { ProcessActions.copy(p.pid.toString(), project) }
+        g.addSeparator()
+        p.ports.take(3).forEach { port -> item("브라우저에서 열기  http://localhost:$port", AllIcons.General.Web) { ProcessActions.openPort(port) } }
+        if (p.ports.isNotEmpty()) g.addSeparator()
+        item("PID 복사", AllIcons.Actions.Copy) { ProcessActions.copy(p.pid.toString(), project) }
         if (p.path.isNotEmpty()) item("경로 복사") { ProcessActions.copy(p.path, project) }
         if (p.cwd.isNotEmpty()) {
             item("작업 폴더 복사") { ProcessActions.copy(p.cwd, project) }
-            item("같은 작업 폴더의 프로세스 찾기") { searchCwd(p.cwd) }
+            item("같은 작업 폴더의 프로세스 찾기", AllIcons.Actions.Find) { searchCwd(p.cwd) }
         }
         service.byPid[p.ppid]?.takeIf { it.pid != p.pid }?.let { par ->
-            menu.addSeparator()
-            item("부모 프로세스로 이동 (${par.name})") { select(par.pid) }
+            g.addSeparator()
+            item("부모 프로세스로 이동 (${par.name})", AllIcons.Hierarchy.Supertypes) { select(par.pid) }
         }
-        menu.show(table, e.x, e.y)
+        ActionManager.getInstance().createActionPopupMenu("ProcessMonitor.TablePopup", g).component.show(table, e.x, e.y)
+    }
+
+    /** 우클릭 메뉴 항목 */
+    private class SimpleAction(text: String, icon: Icon?, private val enabled: Boolean, private val run: () -> Unit) : DumbAwareAction() {
+        init {
+            templatePresentation.setText(text, false) // 이름 속 '_'를 단축키 표시로 해석하지 않음 (process_api 등)
+            templatePresentation.icon = icon
+        }
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        override fun update(e: AnActionEvent) { e.presentation.isEnabled = enabled }
+        override fun actionPerformed(e: AnActionEvent) = run()
     }
 
     override fun dispose() {}
