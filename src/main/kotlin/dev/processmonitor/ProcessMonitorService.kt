@@ -1,0 +1,110 @@
+package dev.processmonitor
+
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.AppExecutorUtil
+import dev.processmonitor.data.Collector
+import dev.processmonitor.model.ProcDetail
+import dev.processmonitor.model.ProcInfo
+import dev.processmonitor.model.SystemStats
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+
+/**
+ * 2초마다 시스템 사용량을 수집하는 앱 전체 공용 서비스.
+ * 프로세스 목록은 보고 있는 화면(도구 창/팝업)이 있을 때만 수집해 IDE 부담을 줄인다.
+ * 아래 상태 값들은 모두 EDT(UI 스레드)에서만 읽고 쓴다.
+ */
+@Service(Service.Level.APP)
+class ProcessMonitorService : Disposable {
+    companion object {
+        const val HISTORY = 60          // 2초 × 60 = 최근 2분
+        const val INTERVAL_MS = 2000L
+        private val LOG = logger<ProcessMonitorService>()
+        fun get(): ProcessMonitorService = service()
+    }
+
+    private class Subscriber(val needsProcesses: () -> Boolean, val onUpdate: () -> Unit)
+
+    private val subscribers = CopyOnWriteArrayList<Subscriber>()
+    private val lock = ReentrantLock()
+    private var future: ScheduledFuture<*>? = null
+    private val collector: Collector? by lazy {
+        try { Collector() } catch (e: Throwable) { LOG.warn("시스템 정보 수집기를 초기화하지 못했습니다", e); error = e.message ?: e.toString(); null }
+    }
+
+    val history = ArrayDeque<SystemStats>()
+    var processes: List<ProcInfo> = emptyList(); private set
+    var byPid: Map<Int, ProcInfo> = emptyMap(); private set
+    val cpuHistory = HashMap<Int, ArrayDeque<Double>>()
+    val memHistory = HashMap<Int, ArrayDeque<Double>>()
+    @Volatile var error: String? = null; private set
+    val cores: Int get() = collector?.cores ?: Runtime.getRuntime().availableProcessors()
+    val latest: SystemStats? get() = history.lastOrNull()
+
+    fun subscribe(parent: Disposable, needsProcesses: () -> Boolean, onUpdate: () -> Unit) {
+        val s = Subscriber(needsProcesses, onUpdate)
+        subscribers += s
+        Disposer.register(parent) { subscribers -= s }
+        synchronized(this) {
+            if (future == null) {
+                future = AppExecutorUtil.getAppScheduledExecutorService()
+                    .scheduleWithFixedDelay(::tick, 0, INTERVAL_MS, TimeUnit.MILLISECONDS)
+            }
+        }
+    }
+
+    /** 다음 주기를 기다리지 않고 바로 한 번 수집 */
+    fun requestNow() = AppExecutorUtil.getAppExecutorService().execute(::tick)
+
+    private fun tick() {
+        if (subscribers.isEmpty() || !lock.tryLock()) return
+        try {
+            val c = collector ?: return
+            val sys = c.system()
+            val procs = if (subscribers.any { it.needsProcesses() }) c.processes(sys.memTotal) else null
+            ApplicationManager.getApplication().invokeLater({ apply(sys, procs) }, ModalityState.any())
+        } catch (e: Throwable) {
+            LOG.warn(e)
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun apply(sys: SystemStats, procs: List<ProcInfo>?) {
+        history.addLast(sys)
+        while (history.size > HISTORY) history.removeFirst()
+        if (procs != null) {
+            processes = procs
+            byPid = procs.associateBy { it.pid }
+            for (p in procs) {
+                cpuHistory.getOrPut(p.pid) { ArrayDeque() }.also { it.addLast(p.cpu); if (it.size > HISTORY) it.removeFirst() }
+                memHistory.getOrPut(p.pid) { ArrayDeque() }.also { it.addLast(p.rssBytes.toDouble()); if (it.size > HISTORY) it.removeFirst() }
+            }
+            cpuHistory.keys.retainAll(byPid.keys)
+            memHistory.keys.retainAll(byPid.keys)
+        }
+        for (s in subscribers) {
+            try { s.onUpdate() } catch (e: Throwable) { LOG.warn(e) }
+        }
+    }
+
+    /** 선택한 프로세스 상세 정보 (백그라운드에서 조회 후 EDT로 전달) */
+    fun loadDetail(pid: Int, onLoaded: (ProcDetail?) -> Unit) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            val d = try { collector?.details(pid) } catch (e: Throwable) { LOG.debug(e); null }
+            ApplicationManager.getApplication().invokeLater({ onLoaded(d) }, ModalityState.any())
+        }
+    }
+
+    override fun dispose() {
+        future?.cancel(false)
+    }
+}
