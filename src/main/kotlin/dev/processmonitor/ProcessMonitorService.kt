@@ -96,6 +96,12 @@ class ProcessMonitorService : Disposable {
         }
     }
 
+    /** 포트를 쓰는 프로세스 PID (백그라운드 스레드에서 호출) */
+    fun listenersOnPort(port: Int): List<Int> = try { collector?.listenersOnPort(port) ?: emptyList() } catch (e: Throwable) { LOG.debug(e); emptyList() }
+
+    /** 현재 프로세스 목록을 바로 조회 (백그라운드 스레드에서 호출) */
+    fun quickList(): List<ProcInfo> = try { collector?.quickList() ?: emptyList() } catch (e: Throwable) { LOG.debug(e); emptyList() }
+
     /** 선택한 프로세스 상세 정보 (백그라운드에서 조회 후 EDT로 전달) */
     fun loadDetail(pid: Int, onLoaded: (ProcDetail?) -> Unit) {
         AppExecutorUtil.getAppExecutorService().execute {

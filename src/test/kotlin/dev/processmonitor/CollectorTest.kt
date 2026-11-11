@@ -2,10 +2,13 @@ package dev.processmonitor
 
 import dev.processmonitor.data.Collector
 import junit.framework.TestCase
+import java.io.File
 import java.net.ServerSocket
 
 /** 실제 OS에서 OSHI로 정보를 읽어오는지 확인 */
 class CollectorTest : TestCase() {
+    private val windows = System.getProperty("os.name").lowercase().contains("win")
+
     fun testSystemStats() {
         val c = Collector()
         c.system()
@@ -31,7 +34,10 @@ class CollectorTest : TestCase() {
             assertNotNull("current process is listed", me)
             me!!
             assertTrue("rss", me.rssBytes > 0)
-            assertEquals("cwd", System.getProperty("user.dir"), me.cwd)
+            // 작업 폴더: Windows는 OSHI가 지원하지 않아 비어 있을 수 있음
+            if (!windows || me.cwd.isNotEmpty()) {
+                assertEquals("cwd", File(System.getProperty("user.dir")).canonicalPath.lowercase(), File(me.cwd).canonicalPath.lowercase())
+            }
             assertTrue("listening port detected: ${me.ports}", server.localPort in me.ports)
             val d = c.details(self)
             assertNotNull(d)
@@ -39,6 +45,9 @@ class CollectorTest : TestCase() {
             assertTrue("LISTEN connection", d.conns.any { it.state == "LISTEN" && it.local.endsWith(":${server.localPort}") })
             // 부모-자식 관계가 이어지는지
             assertTrue("parent exists", procs.any { it.pid == me.ppid })
+            // 포트로 프로세스 찾기 (포트 충돌 알림에서 사용)
+            assertTrue("listenersOnPort", self in c.listenersOnPort(server.localPort))
+            assertTrue("quickList", c.quickList().any { it.pid == self })
         }
     }
 }

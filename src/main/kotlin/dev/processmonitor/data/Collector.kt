@@ -123,6 +123,34 @@ class Collector {
         }
     }
 
+    /** 지금 이 포트에서 LISTEN 중인 프로세스 PID (캐시 없이 바로 조회) */
+    fun listenersOnPort(port: Int): List<Int> {
+        val out = LinkedHashSet<Int>()
+        try {
+            for (c in os.internetProtocolStats.connections) {
+                if (c.localPort == port && c.state == InternetProtocolStats.TcpState.LISTEN && c.getowningProcessId() > 0) {
+                    out += c.getowningProcessId()
+                }
+            }
+        } catch (_: Throwable) {
+        }
+        if (out.isEmpty() && platform != PlatformEnum.WINDOWS) {
+            exec("lsof", "-nP", "-iTCP:$port", "-sTCP:LISTEN", "-t").lineSequence().mapNotNull { it.trim().toIntOrNull() }.forEach { out += it }
+        }
+        return out.toList()
+    }
+
+    /**
+     * CPU 계산 상태를 건드리지 않는 가벼운 프로세스 목록 (다른 스레드에서 호출해도 됨).
+     * CPU 값은 0으로 채운다.
+     */
+    fun quickList(): List<ProcInfo> = os.getProcesses(null, null, 0).map { p ->
+        val path = p.path ?: ""
+        val name = path.substringAfterLast('/').substringAfterLast('\\').ifEmpty { p.name ?: "?" }
+        ProcInfo(p.processID, p.parentProcessID, name, path, p.user ?: "", 0.0, p.residentSetSize, 0.0,
+            p.upTime, p.startTime, cwdOf(p), Describe.classify(path, name), emptyList())
+    }
+
     /** 선택한 프로세스의 실행 명령과 네트워크 연결 (느릴 수 있으니 백그라운드에서 호출) */
     fun details(pid: Int): ProcDetail? {
         val p = os.getProcess(pid) ?: return null

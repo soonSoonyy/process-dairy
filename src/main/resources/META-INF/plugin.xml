@@ -9,7 +9,9 @@
       <li>Status bar widget with live CPU / memory, popup with CPU, memory, disk and network graphs</li>
       <li>"Process Monitor" tool window: list / tree view, search by name, PID, port or working directory</li>
       <li>"This project" filter: processes whose working directory is inside the current project</li>
-      <li>Kill one or many processes, open listening ports in the browser</li>
+      <li>Kill one or many processes (optionally with all child processes), open listening ports in the browser</li>
+      <li>Run/Debug watcher: when a run fails with "port already in use", shows who holds the port with a "Kill and rerun" action;
+          when a run stops but child processes keep running, offers to kill them</li>
     </ul>
     <p>IDE 안에서 실행 중인 프로세스, 포트, CPU·메모리·디스크·네트워크 사용량을 보고 종료할 수 있습니다.</p>
   ]]></description>
@@ -23,4 +25,9 @@
                             implementation="dev.processmonitor.ui.StatusWidgetFactory" order="first"/>
     <notificationGroup id="Process Monitor" displayType="BALLOON"/>
   </extensions>
+
+  <projectListeners>
+    <!-- Run/Debug 실행 감시: 포트 충돌 감지, 실행 종료 후 남은 프로세스 알림 -->
+    <listener class="dev.processmonitor.runs.RunWatcher" topic="com.intellij.execution.ExecutionListener"/>
+  </projectListeners>
 </idea-plugin>

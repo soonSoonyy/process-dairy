@@ -64,6 +64,12 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
     private val resortBtn = JButton("다시 정렬", AllIcons.ObjectBrowser.Sorted).apply { toolTipText = "지금 값 기준으로 순서를 다시 정합니다" }
     private val liveBox = JBCheckBox("실시간 정렬").apply { toolTipText = "켜면 새로고침할 때마다 순서가 바뀝니다" }
     private val chartsBox = JBCheckBox("그래프", true)
+    private val cleanupBtn = JButton("정리", AllIcons.Actions.GC).apply {
+        isVisible = false
+        toolTipText = "이 프로젝트 폴더에서 실행 중이지만 IDE(Run·터미널)와 연결되지 않은 프로세스를 하위 프로세스까지 종료합니다"
+    }
+    private var cleanupTargets: List<ProcInfo> = emptyList()
+    private val pending = ArrayList<() -> Unit>()
     private val countLabel = JBLabel().apply { foreground = UIUtil.getContextHelpForeground() }
     private val charts = SystemCharts()
     private val chartsRow = JPanel(GridLayout(1, 4, JBUI.scale(14), 0)).apply {
@@ -92,7 +98,7 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         val bar = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4))).apply {
             add(scopeBox); add(treeBox); add(sep())
             add(fieldBox); add(search.apply { textEditor.columns = 18 }); add(sep())
-            add(resortBtn); add(liveBox); add(chartsBox); add(countLabel)
+            add(resortBtn); add(liveBox); add(chartsBox); add(countLabel); add(cleanupBtn)
         }
         val north = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -141,6 +147,7 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         search.textEditor.emptyText.text = Field.ALL.hint
         search.addDocumentListener(object : DocumentAdapter() { override fun textChanged(e: DocumentEvent) = rebuild() })
         resortBtn.addActionListener { resort(); rebuild() }
+        cleanupBtn.addActionListener { ProcessActions.kill(project, cleanupTargets, force = false, tree = true) }
         liveBox.addActionListener { if (liveBox.isSelected) { resort(); rebuild() } }
         chartsBox.addActionListener { chartsRow.isVisible = chartsBox.isSelected; revalidate() }
 
@@ -220,6 +227,12 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         if (rank.isEmpty() || liveBox.isSelected) resort()
         rebuild()
         if (++tick % 2 == 0) loadDetail() else renderDetail()
+        if (pending.isNotEmpty()) { val p = pending.toList(); pending.clear(); p.forEach { it() } }
+    }
+
+    /** 프로세스 목록이 준비되면 실행 (알림에서 "Process Monitor에서 보기"를 눌렀을 때 사용) */
+    fun afterFirstData(action: () -> Unit) {
+        if (service.processes.isNotEmpty() && model.rows.isNotEmpty()) action() else { pending += action; service.requestNow() }
     }
 
     // ---------------------------------------------------------------- 정렬 (순서 고정)
@@ -332,7 +345,28 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         }
         model.checked.retainAll(service.byPid.keys)
         countLabel.text = "${rows.size}개"
+        updateCleanup(rows)
         updateActionBar()
+    }
+
+    /** "이 프로젝트" 보기에서 IDE와 연결되지 않은 프로세스(남겨진 개발 서버 등)를 정리 대상으로 */
+    private fun updateCleanup(rows: List<Row>) {
+        if (scopeBox.selectedItem != Scope.PROJECT) { cleanupBtn.isVisible = false; return }
+        val ideTree = ProcessHandle.current().descendants().map { it.pid().toInt() }.toList().toSet()
+        val inView = rows.map { it.p }.filter { inScope(it) }
+        val candidates = inView.filter { it.pid !in ideTree && !ProcessActions.isProtected(it.pid) && it.category != dev.processmonitor.model.Category.SHELL }
+        val ids = candidates.map { it.pid }.toSet()
+        cleanupTargets = candidates.filter { it.ppid !in ids } // 최상위만 (하위는 함께 종료)
+        cleanupBtn.text = "IDE 밖 프로세스 정리 (${candidates.size})"
+        cleanupBtn.isVisible = candidates.isNotEmpty()
+    }
+
+    fun searchPort(port: Int) {
+        fieldBox.selectedItem = Field.PORT
+        scopeBox.selectedItem = Scope.ALL
+        search.text = port.toString()
+        resort(); rebuild()
+        model.rows.firstOrNull()?.let { select(it.p.pid) }
     }
 
     private fun updateActionBar() {
@@ -397,6 +431,8 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         val many = sel.size > 1
         item(if (many) "선택한 ${sel.size}개 종료" else "종료", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, false) }
         item(if (many) "선택한 ${sel.size}개 강제 종료" else "강제 종료", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, true) }
+        val kids = sel.sumOf { ProcessActions.descendantsOf(it.pid).size }
+        if (kids > 0) item("하위 프로세스까지 종료 (+${kids}개)", sel.any { !ProcessActions.isProtected(it.pid) }) { ProcessActions.kill(project, sel, false, tree = true) }
         if (model.checked.isNotEmpty()) item("체크한 ${model.checked.size}개 종료") { ProcessActions.kill(project, checkedProcs(), false) }
         item(if (sel.all { it.pid in model.checked }) "체크 해제 (Space)" else "체크 표시 (Space)") {
             val all = sel.all { it.pid in model.checked }
