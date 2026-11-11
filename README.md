@@ -15,6 +15,16 @@ macOS · Windows · Linux에서 동작하며, IntelliJ IDEA 2024.2 이상(그리
 |---|---|---|
 | ![트리 보기](docs/screenshots/tree-view.png) | ![우클릭 메뉴](docs/screenshots/context-menu.png) | ![종료 확인](docs/screenshots/kill-confirm.png) |
 
+### Run 감시: 포트 충돌 · 남은 프로세스
+
+| ① Run이 포트 충돌로 실패 → 누가 쓰는지 알림 | ② [종료하고 다시 실행] → 바로 재실행 |
+|---|---|
+| ![포트 충돌 알림](docs/screenshots/port-conflict.png) | ![다시 실행](docs/screenshots/port-conflict-rerun.png) |
+
+| ③ Run을 멈췄는데 프로세스가 남음 → [모두 종료] | ④ "이 프로젝트": IDE 밖 프로세스 정리 | ⑤ 하위 프로세스까지 종료 |
+|---|---|---|
+| ![남은 프로세스](docs/screenshots/leftover.png) | ![정리 버튼](docs/screenshots/cleanup-button.png) | ![트리 종료](docs/screenshots/kill-tree-menu.png) |
+
 ## 호환성 검사 결과
 
 JetBrains Plugin Verifier로 검사했습니다. 경고 없이 모두 **Compatible**입니다.
@@ -24,6 +34,8 @@ JetBrains Plugin Verifier로 검사했습니다. 경고 없이 모두 **Compatib
 | IntelliJ IDEA Community 2024.2.5 | 242.24807.4 | Compatible |
 | IntelliJ IDEA Community 2025.2.6.4 | 252.28539.149 | Compatible |
 | IntelliJ IDEA 2026.3 | 263.7307.200 | Compatible |
+
+GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테스트(수집기, 포트 충돌 문구 인식, 프로세스 트리 종료, 화면 렌더링)를 통과합니다.
 
 ## 기능
 
@@ -44,6 +56,12 @@ JetBrains Plugin Verifier로 검사했습니다. 경고 없이 모두 **Compatib
 - **우클릭 메뉴**: 종료, 강제 종료, PID·경로·작업 폴더 복사, 같은 작업 폴더의 프로세스 찾기, `http://localhost:포트` 브라우저에서 열기, 부모 프로세스로 이동
 - **상세 패널**: 이 프로세스가 무엇인지(한국어 설명), CPU·메모리 추이 그래프, 열린 포트와 네트워크 연결, 실행 명령, 경로, 하위 프로세스
 - 단축키: `↑↓` 이동, `Space` 체크, `Delete` 선택 항목 종료
+
+### Run/Debug 감시
+- **포트 충돌 감지**: Run 로그에 "포트가 이미 사용 중" 오류가 나오면(Spring Boot, Node.js, Go, uvicorn, Rails/Puma, create-react-app, Java `BindException`) 그 포트를 쓰는 프로세스를 알려주고 **[종료하고 다시 실행] / [종료만] / [Process Monitor에서 보기]** 버튼을 제공합니다. 정상 종료에 응답하지 않으면 강제 종료 후 포트가 비워진 것을 확인하고 다시 실행합니다.
+- **남은 프로세스 알림**: Run을 멈춘 뒤에도 하위 프로세스나, 실행 중에 이 프로젝트 폴더에서 분리돼 나간 프로세스가 남아 있으면 알려주고 **[모두 종료]**를 제공합니다.
+- **하위 프로세스까지 종료**: 우클릭 메뉴 / 알림 / 정리 버튼은 자식 프로세스부터 함께 종료합니다.
+- **IDE 밖 프로세스 정리**: "이 프로젝트" 보기에서, 프로젝트 폴더에서 돌고 있지만 IDE(Run·터미널)와 연결되지 않은 프로세스를 한 번에 정리합니다.
 
 > 지금 사용 중인 IDE 자신과 PID 0/1은 실수로 종료하지 않도록 막혀 있습니다.
 > 다른 사용자/시스템 프로세스는 운영체제 권한 때문에 작업 폴더·포트가 보이지 않거나 종료되지 않을 수 있습니다.
@@ -76,7 +94,9 @@ src/main/kotlin/dev/processmonitor/
 ├── data/Describe.kt           # 프로세스 분류와 한국어 설명
 ├── model/Model.kt             # 데이터 클래스
 ├── ProcessMonitorService.kt   # 2초마다 수집하는 앱 공용 서비스 (보이는 화면이 있을 때만 프로세스 목록 수집)
-├── ProcessActions.kt          # 종료 / 복사 / 브라우저 열기
+├── ProcessActions.kt          # 종료(하위 프로세스 포함) / 복사 / 브라우저 열기
+├── runs/RunWatcher.kt         # Run/Debug 감시: 포트 충돌 알림, 남은 프로세스 알림
+├── runs/PortConflict.kt       # 로그에서 "포트 사용 중" 오류와 포트 번호 찾기
 └── ui/
     ├── ProcessPanel.kt        # 도구 창 화면 (목록·트리·검색·정렬·우클릭 메뉴)
     ├── ProcessTable.kt        # 표 모델과 칸 렌더러
