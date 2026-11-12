@@ -1,5 +1,6 @@
 package dev.processmonitor.ui
 
+import com.intellij.ide.ui.UISettings
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
@@ -87,7 +88,7 @@ class BadgeIcon(private val cat: Category, private val size: Int = JBUI.scale(16
     override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
         val g2 = g.create() as Graphics2D
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        UISettings.setupAntialiasing(g2) // 글자: IDE와 같은 렌더링(윈도우 ClearType 등)
         g2.color = Palette.category(cat)
         g2.fill(RoundRectangle2D.Float(x.toFloat(), y.toFloat(), size.toFloat(), size.toFloat(), size * 0.35f, size * 0.35f))
         g2.color = Color.WHITE
@@ -153,7 +154,7 @@ class SparkChart(private val colors: List<Color>, height: Int = 74) : JComponent
     override fun paintComponent(g: Graphics) {
         val g2 = g.create() as Graphics2D
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        UISettings.setupAntialiasing(g2) // 글자: IDE와 같은 렌더링(윈도우 ClearType 등)
         val pad = JBUI.scale(2)
         val bold = JBFont.label().asBold()
         val small = JBFont.small()
@@ -206,9 +207,16 @@ class SparkChart(private val colors: List<Color>, height: Int = 74) : JComponent
         g2.clip = clip
         g2.font = small
         val fm = g2.fontMetrics
+        val baseY = top + fm.ascent + JBUI.scale(2)
+        val mx = pad + cw - fm.stringWidth(maxLabel) - JBUI.scale(5)
+        labelBackground(g2, mx, baseY, fm.stringWidth(maxLabel), fm)
         g2.color = UIUtil.getContextHelpForeground()
-        g2.drawString(maxLabel, pad + cw - fm.stringWidth(maxLabel) - JBUI.scale(5), top + fm.ascent + JBUI.scale(2))
+        g2.drawString(maxLabel, mx, baseY)
         var lx = pad + JBUI.scale(6)
+        if (legend.isNotEmpty()) {
+            val lw = legend.sumOf { JBUI.scale(7) + JBUI.scale(10) + fm.stringWidth(it) } - JBUI.scale(7)
+            labelBackground(g2, lx, baseY, lw, fm)
+        }
         legend.forEachIndexed { i, l ->
             val sq = JBUI.scale(7)
             g2.color = colors[i % colors.size]
@@ -218,6 +226,13 @@ class SparkChart(private val colors: List<Color>, height: Int = 74) : JComponent
             lx += sq + JBUI.scale(10) + fm.stringWidth(l)
         }
         g2.dispose()
+    }
+
+    /** 글자 뒤 반투명 배경 (그래프 선 위에서도 글자가 또렷하게) */
+    private fun labelBackground(g2: Graphics2D, x: Int, baseline: Int, w: Int, fm: java.awt.FontMetrics) {
+        val padX = JBUI.scale(3)
+        g2.color = Palette.withAlpha(UIUtil.getPanelBackground(), 225)
+        g2.fillRoundRect(x - padX, baseline - fm.ascent, w + padX * 2, fm.ascent + fm.descent, JBUI.scale(6), JBUI.scale(6))
     }
 
     private fun clip(s: String, g: Graphics2D, w: Int): String {
