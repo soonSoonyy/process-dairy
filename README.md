@@ -111,7 +111,12 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
   ```
   https://github.com/soonSoonyy/process-dairy/releases/latest/download/updatePlugins.xml
   ```
-- 바로 확인하려면 **Settings → Plugins** 위쪽의 **Updates** 탭(또는 ⚙ → Check for Updates)을 보세요.
+- 바로 확인하려면 **Settings → Plugins → Installed** 탭을 보세요. 업데이트가 있으면 탭에 숫자 배지와 **Update** 버튼이 나옵니다.
+- 이 플러그인은 IDE 재시작 후 적용됩니다 (업데이트 후 "Restart" 안내).
+
+| 처음 실행 시 알림 | Plugins에 업데이트 표시 (1.0.0 → 1.1.0) | 설정에서 켜기/끄기 |
+|---|---|---|
+| ![자동 업데이트 알림](docs/screenshots/update-prompt.png) | ![업데이트 표시](docs/screenshots/update-available.png) | ![업데이트 설정](docs/screenshots/update-settings.png) |
 
 ### 새 버전 내기 (개발자용)
 1. `gradle.properties`의 `pluginVersion`을 올립니다 (예: `1.1.0` → `1.2.0`).
