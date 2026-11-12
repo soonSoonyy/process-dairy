@@ -7,6 +7,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import dev.processmonitor.ProcessMonitorService
 import dev.processmonitor.ui.ProcessPanel
+import dev.processmonitor.update.UpdateRepository
 
 /** Settings → Tools → Process Monitor */
 class ProcessMonitorConfigurable : BoundConfigurable("Process Monitor") {
@@ -29,6 +30,13 @@ class ProcessMonitorConfigurable : BoundConfigurable("Process Monitor") {
                         .bindItem({ ProcessPanel.Scope.entries.firstOrNull { it.name == o.defaultScope } ?: ProcessPanel.Scope.MINE },
                             { o.defaultScope = (it ?: ProcessPanel.Scope.MINE).name })
                         .comment("프로젝트에서 처음 도구 창을 열 때 적용됩니다. 이후에는 마지막으로 본 상태를 기억합니다.")
+                }
+            }
+            group("업데이트") {
+                row {
+                    checkBox("새 버전이 나오면 IDE에서 알려주기 (GitHub Release 자동 업데이트)")
+                        .bindSelected({ UpdateRepository.isEnabled() }, { UpdateRepository.setEnabled(it) })
+                        .comment("Settings → Plugins → ⚙ → Manage Plugin Repositories 에 아래 주소를 등록/해제합니다.<br>${UpdateRepository.URL}")
                 }
             }
             group("Run/Debug 감시") {

@@ -25,6 +25,8 @@ class ProcessMonitorSettings : SimplePersistentStateComponent<ProcessMonitorSett
         var defaultScope by string("MINE")
         var watchPortConflicts by property(true)
         var watchLeftovers by property(true)
+        /** "자동 업데이트 켜기" 알림을 이미 보여줬는지 */
+        var updatePrompted by property(false)
     }
 
     companion object {

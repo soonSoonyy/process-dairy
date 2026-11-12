@@ -64,6 +64,22 @@ class UsabilityTest : BasePlatformTestCase() {
         assertEquals(listOf(28, 300, 70), vb.columnWidths)
     }
 
+    /** 자동 업데이트 켜기/끄기 = IDE 플러그인 저장소 목록에 주소 등록/해제 */
+    fun testUpdateRepositoryToggle() {
+        val hosts = com.intellij.openapi.updateSettings.impl.UpdateSettings.getInstance().storedPluginHosts
+        val before = hosts.toList()
+        try {
+            dev.processmonitor.update.UpdateRepository.setEnabled(true)
+            dev.processmonitor.update.UpdateRepository.setEnabled(true) // 두 번 켜도 한 번만 등록
+            assertEquals(1, hosts.count { it == dev.processmonitor.update.UpdateRepository.URL })
+            assertTrue(dev.processmonitor.update.UpdateRepository.isEnabled())
+            dev.processmonitor.update.UpdateRepository.setEnabled(false)
+            assertFalse(dev.processmonitor.update.UpdateRepository.isEnabled())
+        } finally {
+            hosts.clear(); hosts.addAll(before)
+        }
+    }
+
     fun testViewStateRestoredAndSaved() {
         val st = ProcessViewState.get(project).state
         st.scope = "PORTS"; st.tree = true; st.field = "CWD"; st.sortCol = "MEM"; st.sortDesc = false

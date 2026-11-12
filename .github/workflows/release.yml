@@ -1,0 +1,73 @@
+name: Release
+
+# gradle.properties 의 pluginVersion 을 올려서 main 에 푸시하면
+# 테스트 → GitHub Release(v<버전>) 생성 → 설치 파일과 IDE 업데이트 파일(updatePlugins.xml) 업로드
+# 이미 같은 버전의 릴리스가 있으면 아무것도 하지 않음
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: v
+        run: echo "version=$(grep '^pluginVersion=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Already released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "v${{ steps.v.outputs.version }} 은(는) 이미 릴리스됨 - 건너뜀"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.exists == 'false'
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.check.outputs.exists == 'false'
+
+      - name: Test and build
+        if: steps.check.outputs.exists == 'false'
+        run: ./gradlew test buildPlugin generateUpdatePluginsXml
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          D=build/distributions
+          # 항상 같은 이름으로 받을 수 있는 최신 설치 파일 (releases/latest/download/process-monitor-intellij.zip)
+          cp "$D/process-monitor-intellij-$V.zip" "$D/process-monitor-intellij.zip"
+          # CHANGELOG.md 에서 이 버전 항목만 릴리스 노트로
+          awk -v v="## [$V]" 'index($0, v)==1 {f=1; next} /^## /{f=0} f' CHANGELOG.md > notes.md
+          cat >> notes.md <<EOF
+
+          ---
+          **설치**: IntelliJ → Settings → Plugins → ⚙ → Install Plugin from Disk… → \`process-monitor-intellij-$V.zip\`
+          **자동 업데이트**: 플러그인 설정(Tools → Process Monitor)에서 켜거나, Plugins → ⚙ → Manage Plugin Repositories 에
+          \`https://github.com/${{ github.repository }}/releases/latest/download/updatePlugins.xml\` 추가
+          EOF
+          gh release create "v$V" --title "Process Monitor v$V" --notes-file notes.md --target "$GITHUB_SHA" \
+            "$D/process-monitor-intellij-$V.zip" "$D/process-monitor-intellij.zip" "$D/updatePlugins.xml"

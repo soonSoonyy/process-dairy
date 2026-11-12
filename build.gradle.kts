@@ -10,7 +10,19 @@ plugins {
 }
 
 group = "dev.processmonitor"
-version = "1.0.0"
+version = providers.gradleProperty("pluginVersion").get()
+
+/** 릴리스 파일이 올라가는 GitHub 저장소 */
+val repoUrl = "https://github.com/soonSoonyy/process-dairy"
+
+/** CHANGELOG.md에서 해당 버전의 항목("- ...")만 뽑기 */
+fun changelogItems(v: String): List<String> = file("CHANGELOG.md").readLines()
+    .dropWhile { !it.startsWith("## [$v]") }.drop(1)
+    .takeWhile { !it.startsWith("## ") }
+    .map { it.trim() }.filter { it.startsWith("- ") }.map { it.removePrefix("- ").trim() }
+
+fun escapeHtml(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+fun changeNotesHtml(v: String) = changelogItems(v).joinToString("", "<ul>", "</ul>") { "<li>${escapeHtml(it)}</li>" }
 
 repositories {
     // JetBrains 저장소를 먼저 조회 (IntelliJ 테스트 프레임워크 등)
@@ -36,6 +48,7 @@ dependencies {
 
 intellijPlatform {
     pluginConfiguration {
+        changeNotes = provider { changeNotesHtml(project.version.toString()) } // IDE 플러그인 화면의 "What's New"
         ideaVersion {
             sinceBuild = "242"            // 2024.2 이상
             untilBuild = provider { null } // 상한 없음
@@ -66,4 +79,42 @@ tasks.test {
     val jnaDir = intellijPlatform.platformPath.resolve("lib/jna").toFile().listFiles()?.firstOrNull()
     if (jnaDir != null) systemProperty("jna.boot.library.path", jnaDir.absolutePath)
     systemProperty("processmonitor.screenshotDir", layout.buildDirectory.dir("screenshots").get().asFile.absolutePath)
+}
+
+/**
+ * IDE가 읽는 플러그인 저장소 파일 (GitHub Release에 함께 올림).
+ * IDE에 등록하는 주소: $repoUrl/releases/latest/download/updatePlugins.xml
+ */
+val generateUpdatePluginsXml by tasks.registering {
+    group = "release"
+    description = "Writes build/distributions/updatePlugins.xml for the custom plugin repository"
+    val v = project.version.toString()
+    val out = layout.buildDirectory.file("distributions/updatePlugins.xml")
+    val notes = changeNotesHtml(v)
+    inputs.property("version", v)
+    inputs.file("CHANGELOG.md")
+    outputs.file(out)
+    doLast {
+        out.get().asFile.writeText(
+            """
+            |<?xml version="1.0" encoding="UTF-8"?>
+            |<plugins>
+            |  <plugin id="dev.processmonitor" url="$repoUrl/releases/download/v$v/process-monitor-intellij-$v.zip" version="$v">
+            |    <idea-version since-build="242"/>
+            |    <name>Process Monitor</name>
+            |    <vendor url="$repoUrl">Process Monitor</vendor>
+            |    <description><![CDATA[See running processes, ports and CPU / memory / disk / network usage inside the IDE. IDE 안에서 프로세스·포트·사용량을 보고 종료합니다.]]></description>
+            |    <change-notes><![CDATA[$notes]]></change-notes>
+            |  </plugin>
+            |</plugins>
+            |""".trimMargin()
+        )
+    }
+}
+
+/** CI에서 버전 확인용 */
+val printVersion by tasks.registering {
+    group = "release"
+    val v = project.version.toString()
+    doLast { println(v) }
 }

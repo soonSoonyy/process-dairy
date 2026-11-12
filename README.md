@@ -93,12 +93,31 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 
 ## 설치
 
-1. 플러그인 파일(`process-monitor-intellij-1.0.0.zip`)을 준비합니다.
-   - **GitHub에서 받기**: 저장소의 **Actions** 탭 → 최신 "Build plugin" 실행 → 아래쪽 **Artifacts**의 `process-monitor-plugin` 다운로드 (압축을 한 번 풀면 안쪽에 플러그인 zip이 있습니다)
-   - **직접 빌드**: 아래 "개발" 참고
-2. IntelliJ에서 **Settings(설정) → Plugins → ⚙ → Install Plugin from Disk…** → zip 파일 선택 (zip을 풀지 말고 그대로 선택)
+1. **최신 설치 파일 받기**: [process-monitor-intellij.zip](https://github.com/soonSoonyy/process-dairy/releases/latest/download/process-monitor-intellij.zip)
+   (모든 버전: [Releases](https://github.com/soonSoonyy/process-dairy/releases))
+2. IntelliJ에서 **Settings(설정) → Plugins → ⚙ → Install Plugin from Disk…** → 받은 zip 선택 (zip을 풀지 말고 그대로)
 3. IDE를 재시작하라고 하면 재시작합니다.
 4. 오른쪽 아래 상태 표시줄의 `CPU … · MEM …`을 누르거나, **View → Tool Windows → Process Monitor**를 엽니다.
+
+맥(`⌘ ,`)·윈도우(`Ctrl+Alt+S`)·리눅스 모두 같은 파일, 같은 방법입니다.
+
+## 자동 업데이트
+
+한 번만 켜 두면 새 버전이 나올 때 IntelliJ가 **"플러그인 업데이트가 있습니다"** 알림을 띄우고, 클릭 한 번으로 업데이트됩니다.
+
+- **1.1.0 이상**: 설치 후 처음 프로젝트를 열면 뜨는 알림에서 **[자동 업데이트 켜기]**, 또는 **Settings → Tools → Process Monitor → 업데이트**에서 체크
+- **1.0.0을 쓰고 있다면**(또는 직접 등록하려면): **Settings → Plugins → ⚙ → Manage Plugin Repositories… → +** 에 아래 주소를 추가하면
+  바로 1.1.0 업데이트가 표시됩니다.
+  ```
+  https://github.com/soonSoonyy/process-dairy/releases/latest/download/updatePlugins.xml
+  ```
+- 바로 확인하려면 **Settings → Plugins** 위쪽의 **Updates** 탭(또는 ⚙ → Check for Updates)을 보세요.
+
+### 새 버전 내기 (개발자용)
+1. `gradle.properties`의 `pluginVersion`을 올립니다 (예: `1.1.0` → `1.2.0`).
+2. `CHANGELOG.md` 맨 위에 `## [1.2.0]` 항목과 바뀐 내용(`- ...`)을 적습니다.
+3. `main`에 푸시하면 **Release** 워크플로가 테스트 후 GitHub Release `v1.2.0`을 만들고 설치 파일과 `updatePlugins.xml`을 올립니다.
+   자동 업데이트를 켠 IDE들은 이 릴리스를 새 버전으로 알려줍니다. 버전을 그대로 두고 푸시하면 릴리스는 만들어지지 않습니다.
 
 ## 개발
 
@@ -120,6 +139,7 @@ src/main/kotlin/dev/processmonitor/
 ├── model/Model.kt             # 데이터 클래스
 ├── ProcessMonitorService.kt   # 설정한 주기마다 수집하는 앱 공용 서비스 (보이는 화면이 있을 때만 프로세스 목록 수집)
 ├── settings/                  # 설정(앱 전체), 설정 화면, 프로젝트별 보기 상태
+├── update/UpdateRepository.kt # 자동 업데이트(GitHub Release 플러그인 저장소) 켜기/끄기
 ├── actions/PortActions.kt     # Find Action / Tools 메뉴 동작 (포트로 종료·찾기, 창 열기)
 ├── ProcessActions.kt          # 종료(하위 프로세스 포함) / 복사 / 브라우저 열기
 ├── runs/RunWatcher.kt         # Run/Debug 감시: 포트 충돌 알림, 남은 프로세스 알림

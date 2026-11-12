@@ -26,6 +26,7 @@
     <statusBarWidgetFactory id="dev.processmonitor.status"
                             implementation="dev.processmonitor.ui.StatusWidgetFactory" order="first"/>
     <notificationGroup id="Process Monitor" displayType="BALLOON"/>
+    <postStartupActivity implementation="dev.processmonitor.update.UpdateRepositoryActivity"/>
     <applicationConfigurable parentId="tools" id="dev.processmonitor.settings" displayName="Process Monitor"
                              instance="dev.processmonitor.settings.ProcessMonitorConfigurable"/>
   </extensions>
