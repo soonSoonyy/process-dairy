@@ -93,8 +93,8 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 
 ## 설치
 
-1. **최신 설치 파일 받기**: [process-monitor-intellij.zip](https://github.com/soonSoonyy/process-dairy/releases/latest/download/process-monitor-intellij.zip)
-   (모든 버전: [Releases](https://github.com/soonSoonyy/process-dairy/releases))
+1. **최신 설치 파일 받기**: [process-monitor-intellij.zip](https://github.com/soonSoonyy/process-diary/releases/latest/download/process-monitor-intellij.zip)
+   (모든 버전: [Releases](https://github.com/soonSoonyy/process-diary/releases))
 2. IntelliJ에서 **Settings(설정) → Plugins → ⚙ → Install Plugin from Disk…** → 받은 zip 선택 (zip을 풀지 말고 그대로)
 3. IDE를 재시작하라고 하면 재시작합니다.
 4. 오른쪽 아래 상태 표시줄의 `CPU … · MEM …`을 누르거나, **View → Tool Windows → Process Monitor**를 엽니다.
@@ -109,7 +109,7 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 - **1.0.0을 쓰고 있다면**(또는 직접 등록하려면): **Settings → Plugins → ⚙ → Manage Plugin Repositories… → +** 에 아래 주소를 추가하면
   바로 1.1.0 업데이트가 표시됩니다.
   ```
-  https://github.com/soonSoonyy/process-dairy/releases/latest/download/updatePlugins.xml
+  https://github.com/soonSoonyy/process-diary/releases/latest/download/updatePlugins.xml
   ```
 - 바로 확인하려면 **Settings → Plugins → Installed** 탭을 보세요. 업데이트가 있으면 탭에 숫자 배지와 **Update** 버튼이 나옵니다.
 - 이 플러그인은 IDE 재시작 후 적용됩니다 (업데이트 후 "Restart" 안내).

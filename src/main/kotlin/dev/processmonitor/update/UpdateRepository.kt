@@ -13,7 +13,7 @@ import dev.processmonitor.settings.ProcessMonitorSettings
  * (Settings → Plugins → ⚙ → Manage Plugin Repositories 에 들어가는 주소)
  */
 object UpdateRepository {
-    const val URL = "https://github.com/soonSoonyy/process-dairy/releases/latest/download/updatePlugins.xml"
+    const val URL = "https://github.com/soonSoonyy/process-diary/releases/latest/download/updatePlugins.xml"
 
     fun isEnabled(): Boolean = UpdateSettings.getInstance().storedPluginHosts.contains(URL)
 

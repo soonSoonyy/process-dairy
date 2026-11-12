@@ -13,7 +13,7 @@ group = "dev.processmonitor"
 version = providers.gradleProperty("pluginVersion").get()
 
 /** 릴리스 파일이 올라가는 GitHub 저장소 */
-val repoUrl = "https://github.com/soonSoonyy/process-dairy"
+val repoUrl = "https://github.com/soonSoonyy/process-diary"
 
 /** CHANGELOG.md에서 해당 버전의 항목("- ...")만 뽑기 */
 fun changelogItems(v: String): List<String> = file("CHANGELOG.md").readLines()
