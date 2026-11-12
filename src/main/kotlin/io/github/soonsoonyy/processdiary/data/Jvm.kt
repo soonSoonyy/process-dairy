@@ -139,6 +139,13 @@ object Jvm {
         return null
     }
 
+    /** 진단용: 어느 폴더를 찾았고 왜 못 읽었는지 */
+    fun perfDiagnostics(pid: Int): String = perfDirs.joinToString("; ") { dir ->
+        val f = File(dir, pid.toString())
+        val read = if (f.isFile) try { f.readBytes().size.toString() + " bytes" } catch (e: Exception) { "read error: $e" } else "missing"
+        "${dir.path} (dir=${dir.isDirectory}, files=${dir.list()?.take(5)}) -> $read"
+    }
+
     private val usedKey = Regex("^sun\\.gc\\.generation\\.\\d+\\.space\\.\\d+\\.used$")
     private val capacityKey = Regex("^sun\\.gc\\.generation\\.\\d+\\.capacity$")
     private val wantedStrings = setOf("sun.rt.javaCommand", "java.property.java.version", "java.property.java.class.path")
