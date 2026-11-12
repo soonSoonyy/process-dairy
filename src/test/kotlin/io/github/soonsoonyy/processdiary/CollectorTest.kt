@@ -34,10 +34,9 @@ class CollectorTest : TestCase() {
             assertNotNull("current process is listed", me)
             me!!
             assertTrue("rss", me.rssBytes > 0)
-            // 작업 폴더: Windows는 OSHI가 지원하지 않아 비어 있을 수 있음
-            if (!windows || me.cwd.isNotEmpty()) {
-                assertEquals("cwd", File(System.getProperty("user.dir")).canonicalPath.lowercase(), File(me.cwd).canonicalPath.lowercase())
-            }
+            // 작업 폴더 (윈도우는 직접 읽음)
+            assertTrue("cwd of self is empty", me.cwd.isNotEmpty())
+            assertEquals("cwd", File(System.getProperty("user.dir")).canonicalPath.lowercase(), File(me.cwd).canonicalPath.lowercase())
             assertTrue("listening port detected: ${me.ports}", server.localPort in me.ports)
             val d = c.details(self)
             assertNotNull(d)
@@ -48,6 +47,35 @@ class CollectorTest : TestCase() {
             // 포트로 프로세스 찾기 (포트 충돌 알림에서 사용)
             assertTrue("listenersOnPort", self in c.listenersOnPort(server.localPort))
             assertTrue("quickList", c.quickList().any { it.pid == self })
+        }
+    }
+
+    /** 한 번 갱신하는 데 걸리는 시간 (CI 로그에서 운영체제별로 비교) */
+    fun testSampleTiming() {
+        val c = Collector()
+        val total = c.system().memTotal
+        c.processes(total) // 처음 한 번은 준비 작업 포함
+        val times = (1..3).map { val t = System.nanoTime(); val n = c.processes(total).size; Thread.sleep(300); (System.nanoTime() - t) / 1_000_000 - 300 to n }
+        println("TIMING ${System.getProperty("os.name")}: processes() ${times.map { it.first }} ms for ${times.last().second} processes")
+        assertTrue("one refresh should take well under the 2 s interval: $times", times.minOf { it.first } < 1500)
+    }
+
+    /** 다른 폴더에서 띄운 자식 프로세스의 작업 폴더 ("이 프로젝트" 보기, 남은 프로세스 감지에 필요) */
+    fun testChildWorkingDirectory() {
+        val dir = java.nio.file.Files.createTempDirectory("pd cwd test").toFile() // 공백이 있는 경로도
+        val child = ChildJava.start(dir)
+        try {
+            val c = Collector()
+            var cwd = ""
+            val end = System.currentTimeMillis() + 10_000
+            while (cwd.isEmpty() && System.currentTimeMillis() < end) {
+                cwd = c.quickList().firstOrNull { it.pid == child.pid().toInt() }?.cwd ?: ""
+                if (cwd.isEmpty()) Thread.sleep(200)
+            }
+            assertEquals(dir.canonicalPath.lowercase(), File(cwd).canonicalPath.lowercase())
+        } finally {
+            child.destroyForcibly().waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+            dir.delete()
         }
     }
 }

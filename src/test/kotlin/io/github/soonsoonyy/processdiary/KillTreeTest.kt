@@ -35,6 +35,34 @@ class KillTreeTest : TestCase() {
         }
     }
 
+    /** "종료"(강제 아님): 콘솔 프로그램도 끝나야 함 (윈도우는 taskkill 이 거절하면 강제 종료로 넘어감) */
+    fun testStopConsoleProcess() {
+        val p = ProcessBuilder(if (windows) listOf("ping", "-n", "300", "127.0.0.1") else listOf("sleep", "300")).start()
+        try {
+            val r = ProcessActions.killNow(listOf(p.pid().toInt()), force = false, tree = false)
+            assertEquals("failures: ${r.failed}", 1, r.done)
+            assertTrue("ended", p.waitFor(10, TimeUnit.SECONDS))
+        } finally {
+            p.destroyForcibly()
+        }
+    }
+
+    /** 윈도우: 창이 있는 프로그램은 강제 종료가 아니라 "닫기" 요청으로 끝나야 함 (종료 코드 0) */
+    fun testWindowsAsksWindowToClose() {
+        if (!windows) return
+        val p = try { ProcessBuilder("notepad.exe").start() } catch (e: Exception) { return println("notepad not available - skipped: $e") }
+        try {
+            Thread.sleep(2000) // 창이 뜰 때까지
+            val r = ProcessActions.killNow(listOf(p.pid().toInt()), force = false, tree = false)
+            assertEquals("failures: ${r.failed}", 1, r.done)
+            assertTrue("ended", p.waitFor(10, TimeUnit.SECONDS))
+            // TerminateProcess(강제 종료)는 종료 코드 1, 창 닫기는 0
+            assertEquals("closed gracefully", 0, p.exitValue())
+        } finally {
+            p.destroyForcibly()
+        }
+    }
+
     fun testProtectsIdeItself() {
         val self = ProcessHandle.current().pid().toInt()
         val r = ProcessActions.killNow(listOf(self), force = false, tree = false)

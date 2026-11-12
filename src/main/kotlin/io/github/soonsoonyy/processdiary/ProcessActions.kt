@@ -47,11 +47,27 @@ object ProcessActions {
                 if (pid in pids) failed += PD.msg("kill.fail.gone", name)
                 continue
             }
-            val ok = try { if (force) h.get().destroyForcibly() else h.get().destroy() } catch (_: Exception) { false }
+            val ok = try {
+                when {
+                    force -> h.get().destroyForcibly()
+                    // 윈도우의 destroy() 는 곧바로 강제 종료이므로 먼저 taskkill 로 "닫기" 요청 (창이 있는 프로그램은 정상 종료)
+                    windows -> askToClose(pid) || h.get().destroy()
+                    else -> h.get().destroy()
+                }
+            } catch (_: Exception) { false }
             if (ok) done++ else failed += PD.msg("kill.fail.denied", name)
         }
         return KillResult(done, failed)
     }
+
+    private val windows = System.getProperty("os.name").orEmpty().lowercase().startsWith("windows")
+
+    /** 윈도우: taskkill /PID (강제 옵션 없이). 창이 없는 콘솔 프로그램은 거절되므로 false */
+    private fun askToClose(pid: Int): Boolean = try {
+        val p = ProcessBuilder("taskkill", "/PID", pid.toString()).redirectErrorStream(true).start()
+        p.inputStream.readAllBytes()
+        p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS) && p.exitValue() == 0
+    } catch (_: Exception) { false }
 
     /** 확인창을 띄운 뒤 종료하고 결과를 알림으로 보여줌 */
     fun kill(project: Project?, targets: List<ProcInfo>, force: Boolean, tree: Boolean = false) {

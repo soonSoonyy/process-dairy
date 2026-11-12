@@ -93,6 +93,7 @@ class Collector {
             )
         }
         Jvm.retain(times.keys)
+        if (platform == PlatformEnum.WINDOWS) WinNative.retain(times.keys)
         prevProcTimes = times
         prevProcAt = now
         return out
@@ -101,7 +102,11 @@ class Collector {
     private fun jvmOf(p: OSProcess, name: String): JvmInfo? =
         if (!Jvm.isJava(name)) null else try { Jvm.info(p.processID, p.startTime) { p.arguments } } catch (_: Throwable) { null }
 
-    private fun cwdOf(p: OSProcess): String = try { p.currentWorkingDirectory ?: "" } catch (_: Throwable) { "" }
+    private fun cwdOf(p: OSProcess): String {
+        val v = try { p.currentWorkingDirectory ?: "" } catch (_: Throwable) { "" }
+        // 윈도우는 OSHI 가 작업 폴더를 주지 않으므로 직접 읽음
+        return if (v.isEmpty() && platform == PlatformEnum.WINDOWS) WinNative.cwd(p.processID, p.startTime) else v
+    }
 
     /** pid → LISTEN 중인 TCP 포트 (5초 캐시) */
     private fun ports(now: Long): Map<Int, List<Int>> {

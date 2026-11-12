@@ -129,7 +129,11 @@ object Jvm {
             .distinctBy { it.absolutePath.trimEnd('/', '\\') }
     }
 
+    private val windows = System.getProperty("os.name").orEmpty().lowercase().startsWith("windows")
+
     fun readPerf(pid: Int): Perf? {
+        // 윈도우: 파일은 JVM 이 잠가 두므로 같은 내용의 공유 메모리를 읽음
+        if (windows) WinNative.perfData(pid)?.let { return parsePerf(it) }
         for (dir in perfDirs) {
             val f = File(dir, pid.toString())
             if (!f.isFile) continue

@@ -26,7 +26,7 @@ jobs:
 
       - name: Test and build
         shell: bash
-        run: ./gradlew test buildPlugin -i 2>&1 | grep -E "WINDOWS|FAILED|BUILD|tests completed" ; exit ${PIPESTATUS[0]}
+        run: ./gradlew test buildPlugin -i 2>&1 | grep -E "TIMING|FAILED|BUILD|tests completed|Exception|Error" ; exit ${PIPESTATUS[0]}
 
       - name: Upload test report
         if: failure()
