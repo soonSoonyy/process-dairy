@@ -48,5 +48,5 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: process-monitor-plugin
+          name: process-diary-plugin
           path: build/distributions/*.zip

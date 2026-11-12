@@ -1,55 +1,60 @@
 <idea-plugin require-restart="true">
-  <id>dev.processmonitor</id>
-  <name>Process Monitor</name>
-  <vendor>Process Monitor</vendor>
+  <id>io.github.soonsoonyy.processdiary</id>
+  <name>Process Diary</name>
+  <vendor url="https://github.com/soonSoonyy/process-diary">soonSoonyy</vendor>
 
+  <!-- 마켓플레이스 소개문 (영어) -->
   <description><![CDATA[
-    <p>See running processes, ports and system usage without leaving the IDE.</p>
+    <p>See running processes, listening ports and CPU / memory / disk / network usage without leaving the IDE,
+       and clean up the dev servers you forgot about.</p>
     <ul>
-      <li>Status bar widget with live CPU / memory, popup with CPU, memory, disk and network graphs</li>
-      <li>"Process Monitor" tool window: list / tree view, search by name, PID, port or working directory</li>
-      <li>"This project" filter: processes whose working directory is inside the current project</li>
-      <li>Kill one or many processes (optionally with all child processes), open listening ports in the browser</li>
-      <li>Find Action / Tools menu: "Kill Process on Port…", "Find Process by Port…" (assign shortcuts in Keymap)</li>
-      <li>Settings → Tools → Process Monitor: refresh interval, status bar format, default scope, watchers on/off</li>
-      <li>Run/Debug watcher: when a run fails with "port already in use", shows who holds the port with a "Kill and rerun" action;
-          when a run stops but child processes keep running, offers to kill them</li>
+      <li><b>Status bar widget</b> with live CPU and memory; click for CPU, memory, disk and network graphs and the heaviest processes.</li>
+      <li><b>Process Diary tool window</b>: list or tree view, search by name, PID, port or working directory,
+          stable ordering, multi-select stop, and a detail panel that explains what a process is.</li>
+      <li><b>"This project" scope</b>: only processes whose working directory is inside the current project.</li>
+      <li><b>Port conflicts</b>: when a Run/Debug configuration fails with "port already in use"
+          (Spring Boot, Node.js, Go, uvicorn, Rails, Java and more), see who holds the port and <i>Stop it and rerun</i> in one click.</li>
+      <li><b>Leftover processes</b>: when a run stops but child or detached processes keep running, get a notification to stop them.</li>
+      <li><b>Find Action</b>: "Stop Process Using Port…" and "Find Process by Port…" (assign shortcuts in Keymap).</li>
+      <li>Settings → Tools → Process Diary: refresh interval, status bar format, language (English / Korean), watchers.</li>
     </ul>
-    <p>IDE 안에서 실행 중인 프로세스, 포트, CPU·메모리·디스크·네트워크 사용량을 보고 종료할 수 있습니다.</p>
+    <p>Works on macOS, Windows and Linux. The UI is available in English and Korean (한국어).</p>
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
 
+  <!-- 이전 이름(Process Monitor)과 함께 설치되면 같은 기능이 두 번 동작하므로 막음 -->
+  <incompatible-with>dev.processmonitor</incompatible-with>
+
+  <resource-bundle>messages.ProcessDiaryBundle</resource-bundle>
+
   <extensions defaultExtensionNs="com.intellij">
-    <toolWindow id="Process Monitor" anchor="bottom" icon="/icons/processMonitor.svg"
-                factoryClass="dev.processmonitor.ui.ProcessToolWindowFactory" doNotActivateOnStart="true"/>
-    <statusBarWidgetFactory id="dev.processmonitor.status"
-                            implementation="dev.processmonitor.ui.StatusWidgetFactory" order="first"/>
-    <notificationGroup id="Process Monitor" displayType="BALLOON"/>
-    <postStartupActivity implementation="dev.processmonitor.update.UpdateRepositoryActivity"/>
-    <applicationConfigurable parentId="tools" id="dev.processmonitor.settings" displayName="Process Monitor"
-                             instance="dev.processmonitor.settings.ProcessMonitorConfigurable"/>
+    <toolWindow id="Process Diary" anchor="bottom" icon="/icons/processDiary.svg"
+                factoryClass="io.github.soonsoonyy.processdiary.ui.ProcessToolWindowFactory" doNotActivateOnStart="true"/>
+    <statusBarWidgetFactory id="io.github.soonsoonyy.processdiary.status"
+                            implementation="io.github.soonsoonyy.processdiary.ui.StatusWidgetFactory" order="first"/>
+    <notificationGroup id="Process Diary" displayType="BALLOON"/>
+    <postStartupActivity implementation="io.github.soonsoonyy.processdiary.update.UpdateRepositoryActivity"/>
+    <applicationConfigurable parentId="tools" id="io.github.soonsoonyy.processdiary.settings" displayName="Process Diary"
+                             instance="io.github.soonsoonyy.processdiary.settings.ProcessDiaryConfigurable"/>
   </extensions>
 
   <actions>
-    <!-- Find Action(⇧⇧ / Ctrl+Shift+A)에서 검색, Tools 메뉴, Keymap에서 단축키 지정 가능 -->
-    <group id="ProcessMonitor.Group" text="Process Monitor" popup="true" icon="/icons/processMonitor.svg">
+    <!-- 이름/설명은 메시지 파일의 action.<id>.text / .description (IDE 언어를 따름).
+         Find Action(⇧⇧ / Ctrl+Shift+A)에서 영어·한국어 동의어로도 검색 가능 -->
+    <group id="ProcessDiary.Group" popup="true" icon="/icons/processDiary.svg">
       <add-to-group group-id="ToolsMenu" anchor="last"/>
-      <action id="ProcessMonitor.Show" class="dev.processmonitor.actions.ShowProcessMonitorAction"
-              text="Process Monitor 열기" description="실행 중인 프로세스·포트·사용량을 보는 Process Monitor 창을 엽니다"
-              icon="/icons/processMonitor.svg">
-        <synonym text="Open Process Monitor"/>
+      <action id="ProcessDiary.Show" class="io.github.soonsoonyy.processdiary.actions.ShowProcessDiaryAction"
+              icon="/icons/processDiary.svg">
+        <synonym text="Process Monitor"/>
         <synonym text="Task Manager"/>
         <synonym text="프로세스 보기"/>
       </action>
-      <action id="ProcessMonitor.FindByPort" class="dev.processmonitor.actions.FindProcessByPortAction"
-              text="포트로 프로세스 찾기…" description="포트 번호를 입력하면 그 포트를 쓰는 프로세스를 Process Monitor에서 보여줍니다">
-        <synonym text="Find Process by Port"/>
+      <action id="ProcessDiary.FindByPort" class="io.github.soonsoonyy.processdiary.actions.FindProcessByPortAction">
         <synonym text="Who uses port"/>
         <synonym text="포트 찾기"/>
       </action>
-      <action id="ProcessMonitor.KillOnPort" class="dev.processmonitor.actions.KillProcessOnPortAction"
-              text="포트를 쓰는 프로세스 종료…" description="포트 번호를 입력하면 그 포트를 쓰는 프로세스를 하위 프로세스까지 종료합니다"
+      <action id="ProcessDiary.KillOnPort" class="io.github.soonsoonyy.processdiary.actions.KillProcessOnPortAction"
               icon="AllIcons.Debugger.KillProcess">
         <synonym text="Kill Process on Port"/>
         <synonym text="Kill Port"/>
@@ -61,6 +66,6 @@
 
   <projectListeners>
     <!-- Run/Debug 실행 감시: 포트 충돌 감지, 실행 종료 후 남은 프로세스 알림 -->
-    <listener class="dev.processmonitor.runs.RunWatcher" topic="com.intellij.execution.ExecutionListener"/>
+    <listener class="io.github.soonsoonyy.processdiary.runs.RunWatcher" topic="com.intellij.execution.ExecutionListener"/>
   </projectListeners>
 </idea-plugin>

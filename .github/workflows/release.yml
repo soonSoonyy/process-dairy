@@ -19,6 +19,9 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # JetBrains Marketplace 업로드 토큰 (저장소 Settings → Secrets → Actions 에 PUBLISH_TOKEN 으로 등록). 없으면 건너뜀
+      PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,16 +61,22 @@ jobs:
         run: |
           V="${{ steps.v.outputs.version }}"
           D=build/distributions
-          # 항상 같은 이름으로 받을 수 있는 최신 설치 파일 (releases/latest/download/process-monitor-intellij.zip)
-          cp "$D/process-monitor-intellij-$V.zip" "$D/process-monitor-intellij.zip"
+          # 항상 같은 이름으로 받을 수 있는 최신 설치 파일 (releases/latest/download/process-diary.zip)
+          cp "$D/process-diary-$V.zip" "$D/process-diary.zip"
           # CHANGELOG.md 에서 이 버전 항목만 릴리스 노트로
           awk -v v="## [$V]" 'index($0, v)==1 {f=1; next} /^## /{f=0} f' CHANGELOG.md > notes.md
           cat >> notes.md <<EOF
 
           ---
-          **설치**: IntelliJ → Settings → Plugins → ⚙ → Install Plugin from Disk… → \`process-monitor-intellij-$V.zip\`
-          **자동 업데이트**: 플러그인 설정(Tools → Process Monitor)에서 켜거나, Plugins → ⚙ → Manage Plugin Repositories 에
+          **설치**: IntelliJ → Settings → Plugins → ⚙ → Install Plugin from Disk… → \`process-diary-$V.zip\`
+          **자동 업데이트**: 플러그인 설정(Tools → Process Diary)에서 켜거나, Plugins → ⚙ → Manage Plugin Repositories 에
           \`https://github.com/${{ github.repository }}/releases/latest/download/updatePlugins.xml\` 추가
           EOF
-          gh release create "v$V" --title "Process Monitor v$V" --notes-file notes.md --target "$GITHUB_SHA" \
-            "$D/process-monitor-intellij-$V.zip" "$D/process-monitor-intellij.zip" "$D/updatePlugins.xml"
+          gh release create "v$V" --title "Process Diary v$V" --notes-file notes.md --target "$GITHUB_SHA" \
+            "$D/process-diary-$V.zip" "$D/process-diary.zip" "$D/updatePlugins.xml"
+
+      - name: Publish to JetBrains Marketplace
+        # 마켓 첫 등록은 웹에서 직접 해야 하므로, 그 전에는 실패해도 GitHub Release 에는 영향 없음
+        if: steps.check.outputs.exists == 'false' && env.PUBLISH_TOKEN != ''
+        continue-on-error: true
+        run: ./gradlew publishPlugin

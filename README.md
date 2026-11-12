@@ -1,11 +1,19 @@
-# Process Monitor (IntelliJ 플러그인)
+# Process Diary (IntelliJ 플러그인)
 
 IDE를 떠나지 않고 **실행 중인 프로세스, 포트, CPU·메모리·디스크·네트워크 사용량**을 보고, 필요하면 바로 종료할 수 있는 IntelliJ 플랫폼 플러그인입니다.
 macOS · Windows · Linux에서 동작하며, IntelliJ IDEA 2024.2 이상(그리고 같은 플랫폼의 WebStorm, PyCharm, GoLand 등)을 지원합니다.
+화면은 **영어와 한국어**를 지원합니다 (IDE 언어를 따르거나 설정에서 선택). 라이선스: [MIT](LICENSE)
+
+> **이전 이름은 Process Monitor**였습니다 (1.1.1까지, ID `dev.processmonitor`). 1.2.0부터 **Process Diary**(ID `io.github.soonsoonyy.processdiary`)로 바뀌었습니다.
+> 아래 [이전 버전에서 옮겨 오기](#이전-버전process-monitor에서-옮겨-오기)를 참고하세요.
 
 ## 스크린샷
 
 실제 IntelliJ IDEA 2025.2(Community)에 설치해서 찍은 화면입니다.
+
+| English | 한국어 |
+|---|---|
+| ![English](docs/screenshots/tool-window-en.png) | ![한국어](docs/screenshots/tool-window-ko.png) |
 
 | 상태 표시줄 팝업 | "이 프로젝트" 보기 + 상세 패널 |
 |---|---|
@@ -27,11 +35,11 @@ macOS · Windows · Linux에서 동작하며, IntelliJ IDEA 2024.2 이상(그리
 
 ### 사용성: 설정 · Find Action · Tools 메뉴 · 보기 상태 기억
 
-| Find Action에서 "kill port" 검색 | Tools → Process Monitor |
+| Find Action에서 "kill port" 검색 | Tools → Process Diary |
 |---|---|
 | ![Find Action](docs/screenshots/find-action.png) | ![Tools 메뉴](docs/screenshots/tools-menu.png) |
 
-| Settings → Tools → Process Monitor | IDE를 다시 켜도 보기 상태 유지 |
+| Settings → Tools → Process Diary | IDE를 다시 켜도 보기 상태 유지 |
 |---|---|
 | ![설정](docs/screenshots/settings.png) | ![보기 상태 복원](docs/screenshots/restored-view.png) |
 
@@ -54,10 +62,10 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 - 클릭하면 팝업:
   - CPU / 메모리 / 디스크(읽기·쓰기) / 네트워크(받기·보내기) 그래프 (최근 60개 값: 2초 주기면 2분)
   - CPU·메모리를 많이 쓰는 프로세스 상위 5개와 **종료** 버튼 (팝업이 열려 있는 동안 순서 고정)
-  - "Process Monitor 창 열기"
-- 숨기려면 상태 표시줄을 우클릭해서 "Process Monitor (CPU·메모리)"를 끄면 됩니다.
+  - "Process Diary 창 열기"
+- 숨기려면 상태 표시줄을 우클릭해서 "Process Diary (CPU·메모리)"를 끄면 됩니다.
 
-### Process Monitor 도구 창 (아래쪽 패널)
+### Process Diary 도구 창 (아래쪽 패널)
 - **보기 범위**: 내 프로세스 / **이 프로젝트**(작업 폴더가 현재 프로젝트 안에 있는 프로세스) / 모든 프로세스 / 포트 사용 중 / CPU 사용 중
 - **목록 / 트리 보기**: 부모-자식 관계를 펼치고 접기
 - **검색**: 전체 · 이름·PID · 작업 폴더(`~/projects/app` 형식 가능) · 포트 · 실행 경로
@@ -72,18 +80,18 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 - `⇧⇧`(Search Everywhere) 또는 `Ctrl+Shift+A` / `⌘⇧A`(Find Action)에서 영어·한국어로 검색할 수 있습니다.
   - **포트를 쓰는 프로세스 종료…** ("kill port", "free port", "포트 종료")
   - **포트로 프로세스 찾기…** ("find process by port", "who uses port")
-  - **Process Monitor 열기** ("task manager", "프로세스 보기")
-- 같은 동작이 **Tools → Process Monitor** 메뉴에도 있습니다.
-- 단축키는 Find Action 목록에서 `Alt+Enter`(Assign Shortcut), 또는 **Settings → Keymap**에서 "Process Monitor"로 검색해 지정합니다. 기본 단축키는 다른 기능과 겹치지 않도록 비워 두었습니다.
+  - **Process Diary 열기** ("task manager", "프로세스 보기")
+- 같은 동작이 **Tools → Process Diary** 메뉴에도 있습니다.
+- 단축키는 Find Action 목록에서 `Alt+Enter`(Assign Shortcut), 또는 **Settings → Keymap**에서 "Process Diary"로 검색해 지정합니다. 기본 단축키는 다른 기능과 겹치지 않도록 비워 두었습니다.
 
-### 설정 (Settings → Tools → Process Monitor)
+### 설정 (Settings → Tools → Process Diary)
 - 갱신 주기: 1초 / 2초 / 5초
 - 상태 표시줄 형식: CPU · 메모리 / CPU만 / 네트워크 속도 / CPU · 메모리 · 네트워크
 - 처음 보기 범위: 프로젝트에서 처음 도구 창을 열 때 쓸 범위
 - Run/Debug 감시 켜기·끄기: 포트 충돌 알림, 남은 프로세스 알림
 
 ### Run/Debug 감시
-- **포트 충돌 감지**: Run 로그에 "포트가 이미 사용 중" 오류가 나오면(Spring Boot, Node.js, Go, uvicorn, Rails/Puma, create-react-app, Java `BindException`) 그 포트를 쓰는 프로세스를 알려주고 **[종료하고 다시 실행] / [종료만] / [Process Monitor에서 보기]** 버튼을 제공합니다. 정상 종료에 응답하지 않으면 강제 종료 후 포트가 비워진 것을 확인하고 다시 실행합니다.
+- **포트 충돌 감지**: Run 로그에 "포트가 이미 사용 중" 오류가 나오면(Spring Boot, Node.js, Go, uvicorn, Rails/Puma, create-react-app, Java `BindException`) 그 포트를 쓰는 프로세스를 알려주고 **[종료하고 다시 실행] / [종료만] / [Process Diary에서 보기]** 버튼을 제공합니다. 정상 종료에 응답하지 않으면 강제 종료 후 포트가 비워진 것을 확인하고 다시 실행합니다.
 - **남은 프로세스 알림**: Run을 멈춘 뒤에도 하위 프로세스나, 실행 중에 이 프로젝트 폴더에서 분리돼 나간 프로세스가 남아 있으면 알려주고 **[모두 종료]**를 제공합니다.
 - **하위 프로세스까지 종료**: 우클릭 메뉴 / 알림 / 정리 버튼은 자식 프로세스부터 함께 종료합니다.
 - **IDE 밖 프로세스 정리**: "이 프로젝트" 보기에서, 프로젝트 폴더에서 돌고 있지만 IDE(Run·터미널)와 연결되지 않은 프로세스를 한 번에 정리합니다.
@@ -93,19 +101,28 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 
 ## 설치
 
-1. **최신 설치 파일 받기**: [process-monitor-intellij.zip](https://github.com/soonSoonyy/process-diary/releases/latest/download/process-monitor-intellij.zip)
+1. **최신 설치 파일 받기**: [process-diary.zip](https://github.com/soonSoonyy/process-diary/releases/latest/download/process-diary.zip)
    (모든 버전: [Releases](https://github.com/soonSoonyy/process-diary/releases))
 2. IntelliJ에서 **Settings(설정) → Plugins → ⚙ → Install Plugin from Disk…** → 받은 zip 선택 (zip을 풀지 말고 그대로)
 3. IDE를 재시작하라고 하면 재시작합니다.
-4. 오른쪽 아래 상태 표시줄의 `CPU … · MEM …`을 누르거나, **View → Tool Windows → Process Monitor**를 엽니다.
+4. 오른쪽 아래 상태 표시줄의 `CPU … · MEM …`을 누르거나, **View → Tool Windows → Process Diary**를 엽니다.
 
 맥(`⌘ ,`)·윈도우(`Ctrl+Alt+S`)·리눅스 모두 같은 파일, 같은 방법입니다.
+
+## 이전 버전(Process Monitor)에서 옮겨 오기
+
+이름과 ID가 바뀌어서 IDE는 **다른 플러그인**으로 봅니다. 두 개가 함께 설치돼 있으면 같은 기능이 겹치지 않도록 IDE가 새 Process Diary를 꺼 둡니다.
+
+1. **Settings → Plugins → Installed**에서 **Process Monitor**를 **Uninstall**하고 IDE를 재시작합니다.
+2. [process-diary.zip](https://github.com/soonSoonyy/process-diary/releases/latest/download/process-diary.zip)을 받아 **Install Plugin from Disk…**로 설치하고 재시작합니다.
+   (자동 업데이트 주소를 등록해 두었다면 **Plugins → Marketplace** 탭에서 "Process Diary"를 검색해 설치할 수도 있습니다.)
+3. 처음 뜨는 알림에서 **[자동 업데이트 켜기]**를 누릅니다. 이전 플러그인의 설정(갱신 주기 등)은 옮겨지지 않으니 필요하면 다시 설정하세요.
 
 ## 자동 업데이트
 
 한 번만 켜 두면 새 버전이 나올 때 IntelliJ가 **"플러그인 업데이트가 있습니다"** 알림을 띄우고, 클릭 한 번으로 업데이트됩니다.
 
-- **1.1.0 이상**: 설치 후 처음 프로젝트를 열면 뜨는 알림에서 **[자동 업데이트 켜기]**, 또는 **Settings → Tools → Process Monitor → 업데이트**에서 체크
+- **1.1.0 이상**: 설치 후 처음 프로젝트를 열면 뜨는 알림에서 **[자동 업데이트 켜기]**, 또는 **Settings → Tools → Process Diary → 업데이트**에서 체크
 - **1.0.0을 쓰고 있다면**(또는 직접 등록하려면): **Settings → Plugins → ⚙ → Manage Plugin Repositories… → +** 에 아래 주소를 추가하면
   바로 1.1.0 업데이트가 표시됩니다.
   ```
@@ -124,6 +141,17 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 3. `main`에 푸시하면 **Release** 워크플로가 테스트 후 GitHub Release `v1.2.0`을 만들고 설치 파일과 `updatePlugins.xml`을 올립니다.
    자동 업데이트를 켠 IDE들은 이 릴리스를 새 버전으로 알려줍니다. 버전을 그대로 두고 푸시하면 릴리스는 만들어지지 않습니다.
 
+## JetBrains Marketplace 등록
+
+등록 준비(영어 소개문, 로고, MIT 라이선스, 판매자 정보, 호환성 검사)는 끝나 있습니다.
+
+1. [plugins.jetbrains.com](https://plugins.jetbrains.com)에 JetBrains 계정으로 로그인 → 처음이면 **Developer Agreement** 동의와 **Vendor 프로필** 생성
+2. 계정 메뉴 → **Upload plugin** → [최신 process-diary.zip](https://github.com/soonSoonyy/process-diary/releases/latest/download/process-diary.zip) 업로드
+   - License: `MIT` / Source code: 이 저장소 주소 / Category: 예) Tools Integration
+3. JetBrains 검토 후 공개됩니다 (보통 며칠).
+4. 이후 업데이트 자동 업로드: 마켓 계정의 **My Tokens**에서 토큰을 만들어 이 저장소 **Settings → Secrets and variables → Actions**에 `PUBLISH_TOKEN`으로 저장하면,
+   버전을 올려 `main`에 푸시할 때 GitHub Release와 함께 마켓에도 올라갑니다.
+
 ## 개발
 
 필요: JDK 21 (Gradle은 래퍼가 자동으로 받습니다)
@@ -138,7 +166,7 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 ### 구조
 
 ```
-src/main/kotlin/dev/processmonitor/
+src/main/kotlin/io/github/soonsoonyy/processdiary/
 ├── data/Collector.kt          # OSHI로 시스템·프로세스·포트 정보 수집 (맥은 lsof로 보완)
 ├── data/Describe.kt           # 프로세스 분류와 한국어 설명
 ├── model/Model.kt             # 데이터 클래스

@@ -1,1 +1,1 @@
-rootProject.name = "process-monitor-intellij"
+rootProject.name = "process-diary"

@@ -9,7 +9,7 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.20.1"
 }
 
-group = "dev.processmonitor"
+group = "io.github.soonsoonyy.processdiary"
 version = providers.gradleProperty("pluginVersion").get()
 
 /** 릴리스 파일이 올라가는 GitHub 저장소 */
@@ -54,6 +54,10 @@ intellijPlatform {
             untilBuild = provider { null } // 상한 없음
         }
     }
+    // JetBrains Marketplace 업로드 (첫 등록은 웹에서 직접, 이후 업데이트는 CI에서 PUBLISH_TOKEN 으로)
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+    }
     pluginVerification {
         ides {
             create(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2.5")
@@ -78,7 +82,7 @@ tasks.test {
     // 테스트에서 OSHI가 IDE에 포함된 JNA 네이티브 라이브러리를 찾도록
     val jnaDir = intellijPlatform.platformPath.resolve("lib/jna").toFile().listFiles()?.firstOrNull()
     if (jnaDir != null) systemProperty("jna.boot.library.path", jnaDir.absolutePath)
-    systemProperty("processmonitor.screenshotDir", layout.buildDirectory.dir("screenshots").get().asFile.absolutePath)
+    systemProperty("processdiary.screenshotDir", layout.buildDirectory.dir("screenshots").get().asFile.absolutePath)
 }
 
 /**
@@ -99,11 +103,11 @@ val generateUpdatePluginsXml by tasks.registering {
             """
             |<?xml version="1.0" encoding="UTF-8"?>
             |<plugins>
-            |  <plugin id="dev.processmonitor" url="$repoUrl/releases/download/v$v/process-monitor-intellij-$v.zip" version="$v">
+            |  <plugin id="io.github.soonsoonyy.processdiary" url="$repoUrl/releases/download/v$v/process-diary-$v.zip" version="$v">
             |    <idea-version since-build="242"/>
-            |    <name>Process Monitor</name>
-            |    <vendor url="$repoUrl">Process Monitor</vendor>
-            |    <description><![CDATA[See running processes, ports and CPU / memory / disk / network usage inside the IDE. IDE 안에서 프로세스·포트·사용량을 보고 종료합니다.]]></description>
+            |    <name>Process Diary</name>
+            |    <vendor url="$repoUrl">soonSoonyy</vendor>
+            |    <description><![CDATA[See running processes, listening ports and CPU / memory / disk / network usage inside the IDE, and stop the dev servers you forgot about. English and Korean UI.]]></description>
             |    <change-notes><![CDATA[$notes]]></change-notes>
             |  </plugin>
             |</plugins>

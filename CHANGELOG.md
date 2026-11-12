@@ -3,6 +3,14 @@
 버전을 올릴 때는 `gradle.properties`의 `pluginVersion`을 바꾸고 이 파일 맨 위에 같은 버전의 항목을 추가하세요.
 `main`에 푸시하면 GitHub Release와 IDE 업데이트가 자동으로 만들어집니다.
 
+## [1.2.0]
+- Renamed to Process Diary (new plugin ID io.github.soonsoonyy.processdiary). Uninstall the old "Process Monitor" plugin after installing this one.
+- English and Korean UI: follows the IDE language, or pick one in Settings → Tools → Process Diary → Language
+- Fixed numbers such as ports and PIDs being shown with thousands separators in some messages
+- New plugin icon, MIT license
+- 이름이 Process Diary로 바뀌었습니다 (새 플러그인 ID). 설치 후 기존 "Process Monitor" 플러그인은 삭제하세요.
+- 영어/한국어 화면 지원: IDE 언어를 따르거나 설정에서 직접 선택
+
 ## [1.1.1]
 - 업데이트할 때 IDE가 플러그인을 바로 교체하려다 상태 표시줄 위젯이 잠깐 사라지던 문제: 처음부터 "재시작해서 적용"으로 안내
 
