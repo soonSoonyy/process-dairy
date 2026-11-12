@@ -23,6 +23,9 @@ class ProcessViewState : SimplePersistentStateComponent<ProcessViewState.Options
         var live by property(false)
         var charts by property(true)
         var columnWidths by list<Int>()
+        /** Containers 탭: 멈춘 컨테이너도 보기 / 이 프로젝트(compose 폴더)만 */
+        var dockerAll by property(true)
+        var dockerProject by property(false)
     }
 
     companion object {

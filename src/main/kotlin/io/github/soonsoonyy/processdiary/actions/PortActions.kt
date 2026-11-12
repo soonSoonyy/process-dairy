@@ -12,6 +12,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.soonsoonyy.processdiary.ProcessActions
 import io.github.soonsoonyy.processdiary.ProcessDiaryService
+import io.github.soonsoonyy.processdiary.data.Docker
 import io.github.soonsoonyy.processdiary.ui.ProcessToolWindowFactory
 
 /** 포트 번호 입력 (1~65535) */
@@ -35,8 +36,21 @@ class KillProcessOnPortAction : DumbAwareAction() {
             val service = ProcessDiaryService.get()
             val owners = service.listenersOnPort(port).toSet()
             val procs = if (owners.isEmpty()) emptyList() else service.quickList().filter { it.pid in owners }
+            // Docker 가 게시한 포트면 컨테이너를 멈춤 (Docker 프록시 프로세스를 끝내면 Docker 가 멈출 수 있음)
+            val containers = if (procs.isEmpty() || procs.any { Docker.isDockerProcess(it.name) }) Docker.containersOnPort(port) else emptyList()
             ApplicationManager.getApplication().invokeLater {
-                if (procs.isEmpty()) {
+                if (containers.isNotEmpty()) {
+                    val names = containers.joinToString("\n") { "• ${it.name} (${it.image})" }
+                    if (Messages.showYesNoDialog(project, PD.msg("port.container.confirm", port) + "\n\n" + names, PD.msg("docker.stop"),
+                            PD.msg("docker.stop"), PD.msg("common.cancel"), Messages.getWarningIcon()) == Messages.YES) {
+                        AppExecutorUtil.getAppExecutorService().execute {
+                            val errors = containers.mapNotNull { c -> Docker.command("stop", c.id)?.let { "${c.name}: $it" } }
+                            if (errors.isEmpty()) ProcessActions.notify(project, PD.msg("docker.stopped", containers.joinToString(", ") { it.name }), NotificationType.INFORMATION)
+                            else ProcessActions.notify(project, PD.msg("docker.failedAction") + "<br>" + errors.joinToString("<br>"), NotificationType.ERROR)
+                            service.requestNow()
+                        }
+                    }
+                } else if (procs.isEmpty()) {
                     ProcessActions.notify(project, PD.msg("port.none", port), NotificationType.INFORMATION)
                 } else {
                     ProcessActions.kill(project, procs, force = false, tree = true)

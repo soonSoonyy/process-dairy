@@ -3,6 +3,16 @@
 버전을 올릴 때는 `gradle.properties`의 `pluginVersion`을 바꾸고 이 파일 맨 위에 같은 버전의 항목을 추가하세요.
 `main`에 푸시하면 GitHub Release와 IDE 업데이트가 자동으로 만들어집니다.
 
+## [1.3.0]
+- Java processes show what they run: main class or jar (e.g. "Gradle Daemon", "ShopApplication", "app.jar"), Java heap usage and Java version
+- Containers tab: Docker containers with published ports, CPU and memory; start, stop, restart, remove; "This project only" for docker compose
+- Port conflicts caused by a Docker container now offer "Stop container and rerun" instead of stopping Docker's port forwarder
+- Usage alerts: notify when CPU or memory stays above a limit (default 90% for 1 minute), with the top processes and a Stop button
+- Java 프로세스에 실행 중인 메인 클래스/jar 이름, 힙 사용량, Java 버전 표시
+- 컨테이너 탭: Docker 컨테이너 목록, 게시 포트, 시작·정지·재시작·삭제
+- Docker 컨테이너 때문에 생긴 포트 충돌은 "컨테이너 정지 후 다시 실행"으로 해결
+- 사용량 경고: CPU나 메모리가 기준(기본 90%, 1분)을 계속 넘으면 알림
+
 ## [1.2.0]
 - Renamed to Process Diary (new plugin ID io.github.soonsoonyy.processdiary). Uninstall the old "Process Monitor" plugin after installing this one.
 - English and Korean UI: follows the IDE language, or pick one in Settings → Tools → Process Diary → Language

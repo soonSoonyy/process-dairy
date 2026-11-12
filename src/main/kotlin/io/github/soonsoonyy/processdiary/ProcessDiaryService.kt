@@ -8,7 +8,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
+import io.github.soonsoonyy.processdiary.alerts.UsageAlerts
 import io.github.soonsoonyy.processdiary.data.Collector
+import io.github.soonsoonyy.processdiary.data.Docker
 import io.github.soonsoonyy.processdiary.model.ProcDetail
 import io.github.soonsoonyy.processdiary.model.ProcInfo
 import io.github.soonsoonyy.processdiary.model.SystemStats
@@ -34,6 +36,7 @@ class ProcessDiaryService : Disposable {
     private class Subscriber(val needsProcesses: () -> Boolean, val onUpdate: () -> Unit)
 
     private val subscribers = CopyOnWriteArrayList<Subscriber>()
+    private val alerts = UsageAlerts()
     private val lock = ReentrantLock()
     private var future: ScheduledFuture<*>? = null
     private val collector: Collector? by lazy {
@@ -53,8 +56,11 @@ class ProcessDiaryService : Disposable {
         val s = Subscriber(needsProcesses, onUpdate)
         subscribers += s
         Disposer.register(parent) { subscribers -= s }
-        synchronized(this) { if (future == null) schedule() }
+        start()
     }
+
+    /** 수집 시작 (CPU/메모리 경고를 위해 IDE 시작 때도 호출) */
+    fun start() = synchronized(this) { if (future == null) schedule() }
 
     private fun schedule() {
         future = AppExecutorUtil.getAppScheduledExecutorService()
@@ -76,11 +82,12 @@ class ProcessDiaryService : Disposable {
     fun requestNow() = AppExecutorUtil.getAppExecutorService().execute(::tick)
 
     private fun tick() {
-        if (subscribers.isEmpty() || !lock.tryLock()) return
+        if ((subscribers.isEmpty() && !alerts.enabled()) || !lock.tryLock()) return
         try {
             val c = collector ?: return
             val sys = c.system()
-            val procs = if (subscribers.any { it.needsProcesses() }) c.processes(sys.memTotal) else null
+            // 경고 기준을 넘은 동안에는 "가장 많이 쓰는 프로세스"를 알려주기 위해 목록도 수집
+            val procs = if (alerts.watching || subscribers.any { it.needsProcesses() }) c.processes(sys.memTotal) else null
             ApplicationManager.getApplication().invokeLater({ apply(sys, procs) }, ModalityState.any())
         } catch (e: Throwable) {
             LOG.warn(e)
@@ -105,6 +112,7 @@ class ProcessDiaryService : Disposable {
         for (s in subscribers) {
             try { s.onUpdate() } catch (e: Throwable) { LOG.warn(e) }
         }
+        try { alerts.check(sys, if (procs != null) processes else emptyList(), cores) } catch (e: Throwable) { LOG.warn(e) }
     }
 
     /** 포트를 쓰는 프로세스 PID (백그라운드 스레드에서 호출) */
@@ -116,7 +124,13 @@ class ProcessDiaryService : Disposable {
     /** 선택한 프로세스 상세 정보 (백그라운드에서 조회 후 EDT로 전달) */
     fun loadDetail(pid: Int, onLoaded: (ProcDetail?) -> Unit) {
         AppExecutorUtil.getAppExecutorService().execute {
-            val d = try { collector?.details(pid) } catch (e: Throwable) { LOG.debug(e); null }
+            var d = try { collector?.details(pid) } catch (e: Throwable) { LOG.debug(e); null }
+            // Docker가 대신 열어 둔 포트면 어떤 컨테이너인지 함께
+            val p = byPid[pid]
+            if (d != null && p != null && p.ports.isNotEmpty() && Docker.isDockerProcess(p.name)) {
+                val cs = try { (Docker.list(all = false) as? Docker.Result.Ok)?.containers.orEmpty() } catch (e: Throwable) { LOG.debug(e); emptyList() }
+                d = d.copy(containers = cs.filter { c -> c.hostPorts.any { it in p.ports } })
+            }
             ApplicationManager.getApplication().invokeLater({ onLoaded(d) }, ModalityState.any())
         }
     }

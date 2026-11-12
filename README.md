@@ -76,6 +76,30 @@ GitHub Actions에서 **Ubuntu · macOS · Windows** 세 OS 모두 빌드와 테�
 - **상세 패널**: 이 프로세스가 무엇인지(한국어 설명), CPU·메모리 추이 그래프, 열린 포트와 네트워크 연결, 실행 명령, 경로, 하위 프로세스
 - 단축키: `↑↓` 이동, `Space` 체크, `Delete` 선택 항목 종료
 
+### Java 프로세스 구분 (1.3.0)
+- `java`만 보이던 프로세스에 **무엇을 실행 중인지** 표시: `Gradle Daemon`, `Kotlin Daemon`, `JetBrains IDE`, `ShopApplication`(Spring Boot), `app.jar` 등
+- 상세 패널에 **메인 클래스, Java 힙 사용량(사용/확보), Java 버전**
+- JVM이 남기는 성능 정보 파일(`hsperfdata`, jps·jstat이 읽는 파일)을 직접 읽어 맥·윈도우·리눅스에서 똑같이 동작하고, JDK 도구가 없어도 됩니다
+
+![Java 프로세스](docs/screenshots/java-process.png)
+
+### 컨테이너 탭 (Docker, 1.3.0)
+- 컨테이너 목록, 상태, **게시 포트**, CPU, 메모리, compose 프로젝트
+- 우클릭: 정지 · 시작 · 재시작 · 삭제(멈춘 것만, 확인 후), 브라우저에서 포트 열기, 이름·ID·`docker logs` 명령 복사
+- **이 프로젝트만**: 이 프로젝트 폴더에서 `docker compose`로 띄운 컨테이너만
+- Docker Desktop, OrbStack, Colima, Rancher Desktop 등 `docker` 명령이 있으면 동작 (경로는 설정에서 지정 가능)
+- **컨테이너 때문에 생긴 포트 충돌**: 포트를 Docker가 열고 있으면 Docker 프로세스를 끄는 대신 **[컨테이너 정지 후 다시 실행]**을 제안합니다
+
+![컨테이너 탭](docs/screenshots/containers.png)
+![Docker 포트 충돌](docs/screenshots/docker-port-conflict.png)
+
+### 사용량 경고 (1.3.0)
+- CPU나 메모리가 기준(기본 **90%**)을 **1분** 넘게 계속 넘으면 알림. 가장 많이 쓰는 프로세스와 **[종료]** 버튼 포함
+- 한 번 알린 뒤에는 사용량이 내려갔다 다시 오를 때만 다시 알림 (같은 종류는 최소 15분 간격)
+- 도구 창을 닫아 두어도 동작. 기준·시간은 설정에서 변경
+
+![CPU 경고](docs/screenshots/cpu-alert.png)
+
 ### Find Action · Tools 메뉴 · 단축키
 - `⇧⇧`(Search Everywhere) 또는 `Ctrl+Shift+A` / `⌘⇧A`(Find Action)에서 영어·한국어로 검색할 수 있습니다.
   - **포트를 쓰는 프로세스 종료…** ("kill port", "free port", "포트 종료")

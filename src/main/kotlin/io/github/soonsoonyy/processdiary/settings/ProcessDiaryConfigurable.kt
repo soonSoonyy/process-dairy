@@ -5,6 +5,9 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.bindText
+import com.intellij.ui.dsl.builder.AlignX
+import io.github.soonsoonyy.processdiary.data.Docker
 import io.github.soonsoonyy.processdiary.PD
 import io.github.soonsoonyy.processdiary.ProcessDiaryService
 import io.github.soonsoonyy.processdiary.ui.ProcessPanel
@@ -38,6 +41,31 @@ class ProcessDiaryConfigurable : BoundConfigurable("Process Diary") {
                         .bindItem({ ProcessPanel.Scope.entries.firstOrNull { it.name == o.defaultScope } ?: ProcessPanel.Scope.MINE },
                             { o.defaultScope = (it ?: ProcessPanel.Scope.MINE).name })
                         .comment(PD.msg("settings.defaultScope.comment"))
+                }
+            }
+            group(PD.msg("settings.group.alerts")) {
+                val pcts = ProcessDiarySettings.ALERT_PCTS.map { Choice(it, "$it%") }
+                fun pct(v: Int) = pcts.firstOrNull { it.value == v } ?: pcts[2]
+                row {
+                    checkBox(PD.msg("settings.alert.cpu")).bindSelected({ o.alertCpu }, { o.alertCpu = it }).widthGroup("alertLabel")
+                    comboBox(pcts).bindItem({ pct(o.alertCpuPct) }, { o.alertCpuPct = it?.value ?: 90 })
+                }
+                row {
+                    checkBox(PD.msg("settings.alert.mem")).bindSelected({ o.alertMem }, { o.alertMem = it }).widthGroup("alertLabel")
+                    comboBox(pcts).bindItem({ pct(o.alertMemPct) }, { o.alertMemPct = it?.value ?: 90 })
+                }
+                val secs = ProcessDiarySettings.ALERT_SECS.map { Choice(it, if (it % 60 == 0) PD.msg("alert.minutes", it / 60) else PD.msg("alert.seconds", it)) }
+                row(PD.msg("settings.alert.duration")) {
+                    comboBox(secs).bindItem({ secs.firstOrNull { it.value == o.alertSec } ?: secs[1] }, { o.alertSec = it?.value ?: 60 })
+                        .comment(PD.msg("settings.alert.comment"))
+                }
+            }
+            group(PD.msg("settings.group.docker")) {
+                row(PD.msg("settings.docker.path")) {
+                    textField()
+                        .bindText({ o.dockerPath ?: "" }, { o.dockerPath = it.trim() })
+                        .align(AlignX.FILL)
+                        .comment(PD.msg("settings.docker.comment", Docker.cli() ?: PD.msg("settings.docker.notFound")))
                 }
             }
             group(PD.msg("settings.group.update")) {

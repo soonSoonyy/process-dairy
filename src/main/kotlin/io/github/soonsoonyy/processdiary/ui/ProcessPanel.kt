@@ -277,7 +277,7 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
     // ---------------------------------------------------------------- 정렬 (순서 고정)
     private fun comparator(): Comparator<ProcInfo> {
         val base: Comparator<ProcInfo> = when (sortCol) {
-            Col.NAME -> compareBy { it.name.lowercase() }
+            Col.NAME -> compareBy { (it.jvm?.label ?: it.name).lowercase() }
             Col.PID -> compareBy { it.pid }
             Col.CPU -> compareBy { it.cpu }
             Col.MEM -> compareBy { it.rssBytes }
@@ -319,7 +319,7 @@ class ProcessPanel(private val project: Project) : JPanel(BorderLayout()), Dispo
         if (q.isEmpty()) return { true }
         val qx = if (q.startsWith("~")) home.lowercase() + q.substring(1) else q
         val qp = q.removePrefix(":")
-        val name = { p: ProcInfo -> p.name.lowercase().contains(q) || p.pid.toString() == q }
+        val name = { p: ProcInfo -> p.name.lowercase().contains(q) || p.pid.toString() == q || p.jvm?.let { it.label.lowercase().contains(q) || it.main.lowercase().contains(q) } == true }
         val cwd = { p: ProcInfo -> p.cwd.isNotEmpty() && p.cwd.lowercase().contains(qx) }
         val port = { p: ProcInfo -> qp.all(Char::isDigit) && p.ports.any { it.toString().startsWith(qp) } }
         val path = { p: ProcInfo -> p.path.lowercase().contains(qx) }

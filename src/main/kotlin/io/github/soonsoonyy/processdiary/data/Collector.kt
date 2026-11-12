@@ -89,12 +89,17 @@ class Collector {
                 memPct = if (memTotal > 0) rss * 100.0 / memTotal else 0.0,
                 upTimeMs = p.upTime, startTime = p.startTime, cwd = cwdOf(p),
                 category = Describe.classify(path, name), ports = ports[pid] ?: emptyList(),
+                jvm = jvmOf(p, name),
             )
         }
+        Jvm.retain(times.keys)
         prevProcTimes = times
         prevProcAt = now
         return out
     }
+
+    private fun jvmOf(p: OSProcess, name: String): JvmInfo? =
+        if (!Jvm.isJava(name)) null else try { Jvm.info(p.processID, p.startTime) { p.arguments } } catch (_: Throwable) { null }
 
     private fun cwdOf(p: OSProcess): String = try { p.currentWorkingDirectory ?: "" } catch (_: Throwable) { "" }
 
@@ -149,7 +154,7 @@ class Collector {
         val path = p.path ?: ""
         val name = path.substringAfterLast('/').substringAfterLast('\\').ifEmpty { p.name ?: "?" }
         ProcInfo(p.processID, p.parentProcessID, name, path, p.user ?: "", 0.0, p.residentSetSize, 0.0,
-            p.upTime, p.startTime, cwdOf(p), Describe.classify(path, name), emptyList())
+            p.upTime, p.startTime, cwdOf(p), Describe.classify(path, name), emptyList(), jvmOf(p, name))
     }
 
     /** 선택한 프로세스의 실행 명령과 네트워크 연결 (느릴 수 있으니 백그라운드에서 호출) */

@@ -59,14 +59,14 @@ object ProcessActions {
         val verb = PD.msg(if (force) "kill.verb.force" else "kill.verb")
         val childCount = if (tree) targets.sumOf { descendantsOf(it.pid).size } else 0
         val childText = if (childCount > 0) "\n" + PD.msg("kill.confirm.children", childCount) else ""
-        val list = targets.take(10).joinToString("\n") { "• ${it.name} (PID ${it.pid})" } +
+        val list = targets.take(10).joinToString("\n") { "• ${it.displayName} (PID ${it.pid})" } +
             (if (targets.size > 10) "\n" + PD.msg("kill.confirm.more", targets.size - 10) else "")
         val warn = PD.msg("kill.confirm.warning")
-        val msg = if (targets.size == 1) PD.msg("kill.confirm.one", targets[0].name, targets[0].pid, verb) + childText + "\n" + warn
+        val msg = if (targets.size == 1) PD.msg("kill.confirm.one", targets[0].displayName, targets[0].pid, verb) + childText + "\n" + warn
         else PD.msg("kill.confirm.many", targets.size, verb) + childText + "\n\n" + list + "\n\n" + warn
         if (Messages.showYesNoDialog(project, msg, PD.msg("kill.confirm.title", verb), verb, PD.msg("common.cancel"), Messages.getWarningIcon()) != Messages.YES) return
 
-        val r = killNow(targets.map { it.pid }, force, tree, targets.associate { it.pid to it.name })
+        val r = killNow(targets.map { it.pid }, force, tree, targets.associate { it.pid to it.displayName })
         notifyResult(project, r)
         ProcessDiaryService.get().requestNow()
     }

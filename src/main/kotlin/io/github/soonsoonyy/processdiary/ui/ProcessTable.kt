@@ -85,9 +85,15 @@ class NameRenderer(private val tree: () -> Boolean) : ColoredTableCellRenderer()
             icon = badge
         }
         iconTextGap = JBUI.scale(5)
-        append(r.p.name)
+        val jvm = r.p.jvm
+        if (jvm != null) {
+            // Java 는 무엇을 실행하는지가 중요하므로 메인 클래스 이름을 앞에, "java" 는 흐리게
+            append(jvm.label)
+            append("  " + r.p.name, SimpleTextAttributes.GRAYED_ATTRIBUTES)
+        } else append(r.p.name)
         if (tree() && r.children > 0) append("  (${r.children})", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-        toolTipText = r.p.path.ifEmpty { null }
+        toolTipText = (jvm?.main?.let { "$it\n" } ?: "") + r.p.path.ifEmpty { "" }
+        if (toolTipText.isNullOrBlank()) toolTipText = null
     }
 
     companion object {

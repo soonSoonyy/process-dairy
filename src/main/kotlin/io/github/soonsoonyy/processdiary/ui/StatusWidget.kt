@@ -168,7 +168,7 @@ class StatusPopupPanel(private val project: Project, private val close: () -> Un
             pids = keep
             for (i in 0 until n) {
                 val p = target(i)
-                names[i].text = p?.name ?: ""
+                names[i].text = p?.displayName ?: ""
                 names[i].icon = p?.let { BadgeIcon(it.category, JBUI.scale(14)) }
                 names[i].toolTipText = p?.let { "PID ${it.pid} · ${it.path}" }
                 values[i].text = p?.let(value) ?: ""

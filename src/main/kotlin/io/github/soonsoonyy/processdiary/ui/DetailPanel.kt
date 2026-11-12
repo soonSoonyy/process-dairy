@@ -13,6 +13,9 @@ import com.intellij.util.ui.UIUtil
 import io.github.soonsoonyy.processdiary.ProcessActions
 import io.github.soonsoonyy.processdiary.ProcessDiaryService
 import io.github.soonsoonyy.processdiary.data.Describe
+import io.github.soonsoonyy.processdiary.data.Docker
+import com.intellij.notification.NotificationType
+import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.soonsoonyy.processdiary.model.ProcDetail
 import io.github.soonsoonyy.processdiary.model.ProcInfo
 import java.awt.BorderLayout
@@ -130,7 +133,7 @@ class DetailPanel(
             return
         }
         current = p
-        title.text = p.name
+        title.text = p.displayName
         title.icon = BadgeIcon(p.category, JBUI.scale(20))
         subtitle.text = "PID ${p.pid} · ${p.category.label} · ${p.user}"
         cpuChart.isVisible = true; memChart.isVisible = true
@@ -150,9 +153,27 @@ class DetailPanel(
         // 아주 긴 경로/명령만 '/' 뒤에서 줄바꿈 허용 (짧은 건 그대로 표시)
         fun a(href: String, text: String) = "<a href='$href' style='color:$link'>${esc(text)}</a>"
         val sb = StringBuilder()
-        sb.append("<div style='margin-top:6px'><b>${PD.msg("detail.what")}</b><br>${esc(Describe.describe(p.name, p.path, p.category))}</div>")
+        val jvm = p.jvm
+        val what = if (jvm != null) PD.msg("desc.java.${jvm.kind}", jvm.label) else Describe.describe(p.name, p.path, p.category)
+        sb.append("<div style='margin-top:6px'><b>${PD.msg("detail.what")}</b><br>${esc(what)}</div>")
+        // Docker 가 대신 열어 둔 포트: 이 프로세스가 아니라 컨테이너를 멈춰야 함
+        val containers = d?.containers.orEmpty()
+        if (containers.isNotEmpty()) {
+            sb.append("<div style='margin-top:8px'><b>${PD.msg("detail.docker", containers.size)}</b>")
+            containers.forEach { c ->
+                sb.append("<br>${esc(c.name)} <span style='color:$dim'>${esc(c.image)} · ${esc(c.hostPorts.joinToString(", ") { ":$it" })}</span>")
+                sb.append(" &nbsp;" + a("dstop:${c.id}", "■ " + PD.msg("docker.stop")) + " &nbsp;" + a("drestart:${c.id}", PD.msg("docker.restart")))
+            }
+            sb.append("<br><span style='color:$dim'>${PD.msg("detail.docker.hint")}</span></div>")
+        }
         sb.append("<table cellpadding='2' style='margin-top:8px'>")
         fun kv(k: String, v: String) = sb.append("<tr><td style='color:$dim' valign='top' nowrap>$k</td><td>$v</td></tr>")
+        if (jvm != null) {
+            kv(PD.msg("detail.java.main"), esc(jvm.main))
+            if (jvm.heapUsed >= 0) kv(PD.msg("detail.java.heap"), esc(PD.msg("detail.java.heap.value", Fmt.mem(jvm.heapUsed), Fmt.mem(jvm.heapCommitted))))
+            else kv(PD.msg("detail.java.heap"), "<span style='color:$dim'>${PD.msg("detail.java.heap.unknown")}</span>")
+            if (jvm.javaVersion.isNotEmpty()) kv(PD.msg("detail.java.version"), esc(jvm.javaVersion))
+        }
         kv(PD.msg("detail.uptime"), esc(Fmt.uptime(p.upTimeMs)))
         if (p.startTime > 0) kv(PD.msg("detail.started"), esc(SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(p.startTime))))
         if (d != null) kv(PD.msg("detail.state"), esc(d.state))
@@ -178,7 +199,7 @@ class DetailPanel(
             sb.append("</div>")
         }
         sb.append("<div style='margin-top:12px'>")
-        if (!ProcessActions.isProtected(p.pid)) {
+        if (!ProcessActions.isProtected(p.pid) && containers.isEmpty()) {
             sb.append(a("kill:15", "■ " + PD.msg("kill.verb")) + " &nbsp;&nbsp; " + a("kill:9", "■ " + PD.msg("kill.verb.force")) + " &nbsp;&nbsp; ")
         }
         sb.append(a("copy:${p.pid}", PD.msg("menu.copyPid")) + "</div>")
@@ -205,6 +226,16 @@ class DetailPanel(
             d.startsWith("open:") -> d.substring(5).toIntOrNull()?.let { ProcessActions.openPort(it) }
             d.startsWith("kill:") && p != null -> onKill(p, d == "kill:9")
             d.startsWith("copy:") -> ProcessActions.copy(d.substring(5), null)
+            d.startsWith("dstop:") -> docker("stop", d.substring(6))
+            d.startsWith("drestart:") -> docker("restart", d.substring(9))
+        }
+    }
+
+    private fun docker(verb: String, id: String) {
+        AppExecutorUtil.getAppExecutorService().execute {
+            val err = Docker.command(verb, id)
+            if (err != null) ProcessActions.notify(null, PD.msg("docker.failedAction") + "<br>" + StringUtil.escapeXmlEntities(err), NotificationType.ERROR)
+            ProcessDiaryService.get().requestNow()
         }
     }
 

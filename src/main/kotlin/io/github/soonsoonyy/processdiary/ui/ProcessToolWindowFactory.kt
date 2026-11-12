@@ -7,6 +7,7 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.ContentFactory
+import io.github.soonsoonyy.processdiary.PD
 
 class ProcessToolWindowFactory : ToolWindowFactory, DumbAware {
     companion object {
@@ -16,7 +17,9 @@ class ProcessToolWindowFactory : ToolWindowFactory, DumbAware {
         private fun withPanel(project: Project, action: (ProcessPanel) -> Unit) {
             val tw = ToolWindowManager.getInstance(project).getToolWindow(ID) ?: return
             tw.show {
-                val panel = tw.contentManager.contents.firstNotNullOfOrNull { it.component as? ProcessPanel } ?: return@show
+                val content = tw.contentManager.contents.firstOrNull { it.component is ProcessPanel } ?: return@show
+                tw.contentManager.setSelectedContent(content)
+                val panel = content.component as ProcessPanel
                 panel.afterFirstData { action(panel) }
             }
         }
@@ -28,9 +31,15 @@ class ProcessToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val panel = ProcessPanel(project)
-        val content = ContentFactory.getInstance().createContent(panel, "", false)
+        val content = ContentFactory.getInstance().createContent(panel, PD.msg("tab.processes"), false)
         content.setDisposer(panel)
         Disposer.register(toolWindow.disposable, panel)
         toolWindow.contentManager.addContent(content)
+
+        val containers = ContainerPanel(project)
+        val dockerContent = ContentFactory.getInstance().createContent(containers, PD.msg("tab.containers"), false)
+        dockerContent.setDisposer(containers)
+        Disposer.register(toolWindow.disposable, containers)
+        toolWindow.contentManager.addContent(dockerContent)
     }
 }

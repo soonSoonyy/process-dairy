@@ -15,6 +15,10 @@
       <li><b>Port conflicts</b>: when a Run/Debug configuration fails with "port already in use"
           (Spring Boot, Node.js, Go, uvicorn, Rails, Java and more), see who holds the port and <i>Stop it and rerun</i> in one click.</li>
       <li><b>Leftover processes</b>: when a run stops but child or detached processes keep running, get a notification to stop them.</li>
+      <li><b>Java processes</b>: see the main class or jar instead of just "java" (Gradle Daemon, Kotlin Daemon, your Spring Boot app), with Java heap usage.</li>
+      <li><b>Containers tab</b>: Docker containers with published ports, CPU and memory; start, stop, restart and remove.
+          When a run fails because a container holds the port, <i>Stop container and rerun</i>.</li>
+      <li><b>Usage alerts</b>: get notified when CPU or memory stays high, with the processes using the most.</li>
       <li><b>Find Action</b>: "Stop Process Using Port…" and "Find Process by Port…" (assign shortcuts in Keymap).</li>
       <li>Settings → Tools → Process Diary: refresh interval, status bar format, language (English / Korean), watchers.</li>
     </ul>
@@ -35,6 +39,7 @@
                             implementation="io.github.soonsoonyy.processdiary.ui.StatusWidgetFactory" order="first"/>
     <notificationGroup id="Process Diary" displayType="BALLOON"/>
     <postStartupActivity implementation="io.github.soonsoonyy.processdiary.update.UpdateRepositoryActivity"/>
+    <postStartupActivity implementation="io.github.soonsoonyy.processdiary.alerts.AlertStartActivity"/>
     <applicationConfigurable parentId="tools" id="io.github.soonsoonyy.processdiary.settings" displayName="Process Diary"
                              instance="io.github.soonsoonyy.processdiary.settings.ProcessDiaryConfigurable"/>
   </extensions>
